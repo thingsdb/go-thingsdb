@@ -21,8 +21,11 @@ const (
 	// ProtoOnWatchDel `thing` is removed from ThingsDB
 	ProtoOnWatchDel Proto = 3
 
+	// ProtoOnWatchStop stopped watching a `thing`
+	ProtoOnWatchStop Proto = 4
+
 	// ProtoOnWarn warning message for the connected client
-	ProtoOnWarn Proto = 4
+	ProtoOnWarn Proto = 5
 
 	/*
 	 * Responses
