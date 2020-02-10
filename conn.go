@@ -188,10 +188,12 @@ func (conn *Conn) getRespCh(pid uint16, b []byte, timeout uint16) (interface{}, 
 
 	timeoutCh := make(chan bool, 1)
 
-	go func() {
-		time.Sleep(time.Duration(timeout) * time.Second)
-		timeoutCh <- true
-	}()
+	if timeout != 0 {
+		go func() {
+			time.Sleep(time.Duration(timeout) * time.Second)
+			timeoutCh <- true
+		}()
+	}
 
 	result, err := getResult(respCh, timeoutCh)
 
