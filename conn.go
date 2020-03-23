@@ -299,7 +299,8 @@ func (conn *Conn) writeLog(s string, a ...interface{}) {
 
 func (conn *Conn) ping(ok chan bool) {
 	firstLoop := true
-	for {
+	continueLoop := true
+	for continueLoop {
 		if conn.IsConnected() {
 			_, err := conn.write(ProtoReqPing, nil, 5)
 			if err != nil {
@@ -309,13 +310,7 @@ func (conn *Conn) ping(ok chan bool) {
 				conn.writeLog("ping! (%s:%d)", conn.host, conn.port)
 			}
 		} else {
-			err := conn.Connect()
-			if err != nil {
-				conn.writeLog(err.Error())
-				conn.Close()
-			} else {
-				conn.writeLog("authenticated to %s:%d", conn.host, conn.port)
-			}
+			continueLoop = false
 		}
 		if firstLoop {
 			firstLoop = false
