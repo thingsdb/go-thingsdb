@@ -15,17 +15,19 @@ const defaultPingInterval = 30
 
 // Conn is a ThingsDB connection to a single node.
 type Conn struct {
-	host         string
-	port         uint16
-	pid          uint16
-	buf          *buffer
-	respMap      map[uint16]chan *pkg
-	ssl          *tls.Config
-	mux          sync.Mutex
-	OnClose      func(error)
-	EventCh      chan *Event
-	LogCh        chan string
-	PingInterval time.Duration
+	host           string
+	port           uint16
+	pid            uint16
+	buf            *buffer
+	respMap        map[uint16]chan *pkg
+	ssl            *tls.Config
+	mux            sync.Mutex
+	OnClose        func(error)
+	EventCh        chan *Event
+	LogCh          chan string
+	PingInterval   time.Duration
+	keepAliveMux   sync.Mutex
+	isKeepingAlive bool
 }
 
 // NewConn creates a new connection
@@ -173,9 +175,12 @@ func (conn *Conn) Run(procedure string, args interface{}, scope string, timeout 
 
 // Keep connection alive using the ping-pong protocol of ThingsDB
 func (conn *Conn) EnableKeepAlive() {
-	ok := make(chan bool)
-	go conn.ping(ok)
-	<-ok
+	conn.keepAliveMux.Lock()
+	if !conn.isKeepingAlive {
+		conn.isKeepingAlive = true
+		go conn.ping()
+	}
+	conn.keepAliveMux.Unlock()
 }
 
 // Close will close an open connection.
@@ -297,10 +302,9 @@ func (conn *Conn) writeLog(s string, a ...interface{}) {
 	}
 }
 
-func (conn *Conn) ping(ok chan bool) {
-	firstLoop := true
-	continueLoop := true
-	for continueLoop {
+func (conn *Conn) ping() {
+	for {
+		time.Sleep(conn.PingInterval * time.Second)
 		if conn.IsConnected() {
 			_, err := conn.write(ProtoReqPing, nil, 5)
 			if err != nil {
@@ -310,12 +314,10 @@ func (conn *Conn) ping(ok chan bool) {
 				conn.writeLog("ping! (%s:%d)", conn.host, conn.port)
 			}
 		} else {
-			continueLoop = false
+			conn.keepAliveMux.Lock()
+			conn.isKeepingAlive = false
+			conn.keepAliveMux.Unlock()
+			break
 		}
-		if firstLoop {
-			firstLoop = false
-			ok <- true
-		}
-		time.Sleep(conn.PingInterval * time.Second)
 	}
 }
