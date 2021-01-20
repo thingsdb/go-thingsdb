@@ -12,32 +12,38 @@ import (
 	"gopkg.in/vmihailenco/msgpack.v4"
 )
 
+const defaultPingInterval = 30
+
 // Conn is a ThingsDB connection to a single node.
 type Conn struct {
-	host    string
-	port    uint16
-	pid     uint16
-	buf     *buffer
-	respMap map[uint16]chan *pkg
-	ssl     *tls.Config
-	mux     sync.Mutex
-	OnClose func(error)
-	EventCh chan *Event
-	LogCh   chan string
+	host           string
+	port           uint16
+	pid            uint16
+	buf            *buffer
+	respMap        map[uint16]chan *pkg
+	ssl            *tls.Config
+	mux            sync.Mutex
+	OnClose        func(error)
+	EventCh        chan *Event
+	LogCh          chan string
+	PingInterval   time.Duration
+	keepAliveMux   sync.Mutex
+	isKeepingAlive bool
 }
 
 // NewConn creates a new connection
 func NewConn(host string, port uint16, ssl *tls.Config) *Conn {
 	return &Conn{
-		host:    host,
-		port:    port,
-		pid:     0,
-		buf:     newBuffer(),
-		respMap: make(map[uint16]chan *pkg),
-		ssl:     ssl,
-		OnClose: nil,
-		EventCh: nil,
-		LogCh:   nil,
+		host:         host,
+		port:         port,
+		pid:          0,
+		buf:          newBuffer(),
+		respMap:      make(map[uint16]chan *pkg),
+		ssl:          ssl,
+		OnClose:      nil,
+		EventCh:      nil,
+		LogCh:        nil,
+		PingInterval: defaultPingInterval,
 	}
 }
 
@@ -117,7 +123,7 @@ func (conn *Conn) Query(scope string, query string, arguments map[string]interfa
 	return conn.write(ProtoReqQuery, data, timeout)
 }
 
-// Watch
+// Watch for changes on given things.
 func (conn *Conn) Watch(scope string, ids []uint64, timeout uint16) (interface{}, error) {
 	data := make([]interface{}, 1)
 	data[0] = scope
@@ -127,7 +133,7 @@ func (conn *Conn) Watch(scope string, ids []uint64, timeout uint16) (interface{}
 	return conn.write(ProtoReqWatch, data, timeout)
 }
 
-// Unwatch
+// Unwatch for changes on given things.
 func (conn *Conn) Unwatch(scope string, ids []uint64, timeout uint16) (interface{}, error) {
 	data := make([]interface{}, 1)
 	data[0] = scope
@@ -135,6 +141,32 @@ func (conn *Conn) Unwatch(scope string, ids []uint64, timeout uint16) (interface
 		data = append(data, v)
 	}
 	return conn.write(ProtoReqUnwatch, data, timeout)
+}
+
+// Run can be used to run a stored procedure in a scope
+func (conn *Conn) Run(procedure string, args interface{}, scope string, timeout uint16) (interface{}, error) {
+	if len(procedure) == 0 {
+		return nil, fmt.Errorf("No procedure given")
+	}
+	if len(scope) == 0 {
+		return nil, fmt.Errorf("No scope given")
+	}
+	data := make([]interface{}, 3)
+	data[0] = scope
+	data[1] = procedure
+	data[2] = args
+
+	return conn.write(ProtoReqRun, data, timeout)
+}
+
+// EnableKeepAlive Keep connection alive using the ping-pong protocol of ThingsDB
+func (conn *Conn) EnableKeepAlive() {
+	conn.keepAliveMux.Lock()
+	if !conn.isKeepingAlive {
+		conn.isKeepingAlive = true
+		go conn.ping()
+	}
+	conn.keepAliveMux.Unlock()
 }
 
 // Close will close an open connection.
@@ -154,7 +186,7 @@ func getResult(respCh chan *pkg, timeoutCh chan bool) (interface{}, error) {
 		switch Proto(pkg.tp) {
 		case ProtoResData:
 			err = msgpack.Unmarshal(pkg.data, &result)
-		case ProtoResPing, ProtoResOk:
+		case ProtoResPong, ProtoResOk:
 			result = nil
 		case ProtoResError:
 			err = NewErrorFromByte(pkg.data)
@@ -253,5 +285,25 @@ func (conn *Conn) writeLog(s string, a ...interface{}) {
 		log.Println(msg)
 	} else {
 		conn.LogCh <- msg
+	}
+}
+
+func (conn *Conn) ping() {
+	for {
+		time.Sleep(conn.PingInterval * time.Second)
+		if conn.IsConnected() {
+			_, err := conn.write(ProtoReqPing, nil, 5)
+			if err != nil {
+				conn.writeLog("ping failed: %s", err)
+
+			} else {
+				conn.writeLog("ping! (%s:%d)", conn.host, conn.port)
+			}
+		} else {
+			conn.keepAliveMux.Lock()
+			conn.isKeepingAlive = false
+			conn.keepAliveMux.Unlock()
+			break
+		}
 	}
 }

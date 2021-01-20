@@ -31,8 +31,8 @@ const (
 	 * Responses
 	 */
 
-	// ProtoResPing responds with `nil`
-	ProtoResPing Proto = 16
+	// ProtoResPong responds with `nil`
+	ProtoResPong Proto = 16
 	// ProtoResOk responds with `nil`
 	ProtoResOk Proto = 17
 	// ProtoResData responds with `...`
