@@ -1,3 +1,4 @@
 package thingsdb
 
-const version = "0.2.0"
+//Version exposes the go-thingsdb version
+const Version = "0.2.1"

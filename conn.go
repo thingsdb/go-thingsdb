@@ -3,6 +3,7 @@ package thingsdb
 import (
 	"crypto/tls"
 	"fmt"
+	"log"
 	"net"
 	"strings"
 	"sync"
@@ -249,7 +250,7 @@ func (conn *Conn) listen() {
 func (conn *Conn) writeLog(s string, a ...interface{}) {
 	msg := fmt.Sprintf(s, a...)
 	if conn.LogCh == nil {
-		fmt.Println(msg)
+		log.Println(msg)
 	} else {
 		conn.LogCh <- msg
 	}

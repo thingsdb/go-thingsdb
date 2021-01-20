@@ -16,6 +16,8 @@ const (
 	 * and are in the range from 96-127.
 	 */
 
+	// CancelledError - operation is cancelled before completion
+	CancelledError ErrorCode = ErrorCode(-64)
 	// OperationError - operation is not valid in the current context
 	OperationError ErrorCode = ErrorCode(-63)
 	// NumArgumentsError - wrong number of arguments
