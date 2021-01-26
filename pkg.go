@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"gopkg.in/vmihailenco/msgpack.v4"
+	"github.com/vmihailenco/msgpack/v4"
 )
 
 // pkgHeaderSize is the size of a package header.
