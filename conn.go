@@ -123,24 +123,24 @@ func (conn *Conn) Query(scope string, query string, arguments map[string]interfa
 	return conn.write(ProtoReqQuery, data, timeout)
 }
 
-// Watch for changes on given things.
-func (conn *Conn) Watch(scope string, ids []uint64, timeout uint16) (interface{}, error) {
+// Join room(s)
+func (conn *Conn) Join(scope string, ids []uint64, timeout uint16) (interface{}, error) {
 	data := make([]interface{}, 1)
 	data[0] = scope
 	for _, v := range ids {
 		data = append(data, v)
 	}
-	return conn.write(ProtoReqWatch, data, timeout)
+	return conn.write(ProtoReqJoin, data, timeout)
 }
 
-// Unwatch for changes on given things.
-func (conn *Conn) Unwatch(scope string, ids []uint64, timeout uint16) (interface{}, error) {
+// Leave room(s)
+func (conn *Conn) Leave(scope string, ids []uint64, timeout uint16) (interface{}, error) {
 	data := make([]interface{}, 1)
 	data[0] = scope
 	for _, v := range ids {
 		data = append(data, v)
 	}
-	return conn.write(ProtoReqUnwatch, data, timeout)
+	return conn.write(ProtoReqLeave, data, timeout)
 }
 
 // Run can be used to run a stored procedure in a scope
