@@ -54,6 +54,10 @@ func example(conn *thingsdb.Conn, ok chan bool) {
 		return
 	}
 
+	if res, err = conn.Query("//stuff", "!.has('room') && .room = room();", nil, thingsdb.DefaultTimeout); err != nil {
+		println(err.Error())
+	}
+
 	room := thingsdb.NewRoom("//stuff", ".room.id();")
 	room.OnInit = onInit
 	room.OnJoin = onJoin
@@ -64,22 +68,22 @@ func example(conn *thingsdb.Conn, ok chan bool) {
 	}
 
 	counter := 0
+	i := 0
 	stop = false
 
-	for i := 0; i < 999 && !stop; {
-		time.Sleep(2 * time.Second)
+	for i < 999 && !stop {
+		time.Sleep(time.Second)
 
-		if res, err = conn.Query("@thingsdb", "collections_info();", nil, thingsdb.DefaultTimeout); err != nil {
+		if res, err = conn.Query("//stuff", ".keys();", nil, thingsdb.DefaultTimeout); err != nil {
 			println(err.Error())
 		} else {
 			fmt.Printf("%v\n", res)
 			counter += 1
 		}
-
 		i += 1
 	}
 
-	fmt.Printf("Succes count: %d\n", counter)
+	fmt.Printf("Succes count: %d  Total count: %d\n", counter, i)
 	ok <- true
 }
 
