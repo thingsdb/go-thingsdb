@@ -1,0 +1,27 @@
+package thingsdb
+
+import (
+	"github.com/vmihailenco/msgpack/v5"
+)
+
+// RoomEvent is an event dedicated to the rooms API (Join/Leave/Emit/Delete)
+type RoomEvent struct {
+	Tp    Proto
+	Id    uint64        `msgpack:"id"`
+	Event string        `msgpack:"event"`
+	Args  []interface{} `msgpack:"args"`
+}
+
+// newRoomEvent creates a new node status
+func newRoomEvent(pkg *pkg) (*RoomEvent, error) {
+
+	var result RoomEvent
+	err := msgpack.Unmarshal(pkg.data, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	result.Tp = Proto(pkg.tp)
+
+	return &result, nil
+}

@@ -1,7 +1,7 @@
 package thingsdb
 
 import (
-	"github.com/vmihailenco/msgpack/v4"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // Event is writting to the client event channel in case of an event

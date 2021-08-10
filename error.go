@@ -1,7 +1,7 @@
 package thingsdb
 
 import (
-	"github.com/vmihailenco/msgpack/v4"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // ErrorCode known by ThingsDB
