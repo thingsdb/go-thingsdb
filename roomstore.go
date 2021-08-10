@@ -13,15 +13,9 @@ func newRoomStore() *roomStore {
 	}
 }
 
-func (rs *roomStore) getRoom(id uint64) *Room {
+func (rs *roomStore) getRoom(id uint64) (*Room, bool) {
 	rs.mux.Lock()
-	room := rs.store[id]
+	room, ok := rs.store[id]
 	rs.mux.Unlock()
-	return room
-}
-
-func (rs *roomStore) registerRoom(room *Room) {
-	rs.mux.Lock()
-	rs.store[room.id] = room
-	rs.mux.Unlock()
+	return room, ok
 }

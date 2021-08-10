@@ -5,7 +5,7 @@ import (
 )
 
 // RoomEvent is an event dedicated to the rooms API (Join/Leave/Emit/Delete)
-type RoomEvent struct {
+type roomEvent struct {
 	Tp    Proto
 	Id    uint64        `msgpack:"id"`
 	Event string        `msgpack:"event"`
@@ -13,9 +13,9 @@ type RoomEvent struct {
 }
 
 // newRoomEvent creates a new node status
-func newRoomEvent(pkg *pkg) (*RoomEvent, error) {
+func newRoomEvent(pkg *pkg) (*roomEvent, error) {
 
-	var result RoomEvent
+	var result roomEvent
 	err := msgpack.Unmarshal(pkg.data, &result)
 	if err != nil {
 		return nil, err
