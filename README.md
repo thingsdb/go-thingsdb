@@ -23,6 +23,7 @@
     * [Scope() -> string](#Scope)
     * [HandleEvent(event, handle)](#HandleEvent)
     * [Join(conn, wait) -> error](#Join)
+    * [Leave() -> error](#Leave)
     * [Emit(event, args) -> interface{}, error](#Emit)
 
 ---------------------------------------
@@ -290,9 +291,9 @@ Close an open connection.
 Key        | Type         | Default      | Description
 -----------| ------------ | ------------ | -----------
 OnInit     | func(\*Room) | *dummy func* | Called only once at the first join. This function will run before the OnJoin.
-OnJoin     | func(\*Room) | *dummy func* | Called only once at the first join. This function will run before the OnJoin.
-OnLeave    | func(\*Room) | *dummy func* | Called only once at the first join. This function will run before the OnJoin.
-OnDelete   | func(\*Room) | *dummy func* | Called only once at the first join. This function will run before the OnJoin.
+OnJoin     | func(\*Room) | *dummy func* | Called at each join, thus also after a re-connect.
+OnLeave    | func(\*Room) | *dummy func* | Called only when a room is explicitly left (A call to [room.Leave()](#Leave)).
+OnDelete   | func(\*Room) | *dummy func* | Called when the room is removed from ThingsDB.
 Data       | interface{}  | `nil`        | Can be used so assign additional data to the room.
 
 *Example configuring the OnInit and OnJoin functions:*
@@ -388,6 +389,10 @@ If `wait` is set to any other positive value, then both the `OnInit` and `OnJoin
 ```go
 err := room.Join(conn, thingsdb.DefaultWait)
 ```
+
+### Leave
+
+Use this function to stop listening for events on a room.
 
 ### Emit
 

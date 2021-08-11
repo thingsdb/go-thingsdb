@@ -102,6 +102,29 @@ func (room *Room) Join(conn *Conn, wait time.Duration) error {
 	return nil
 }
 
+// Leave can be used to leave a room
+func (room *Room) Leave() error {
+	if room.id == 0 {
+		return fmt.Errorf("Room Id is zero (0), most likely the room has never been joined")
+	}
+
+	if room.conn == nil {
+		return fmt.Errorf("Room Id %d is not joined", room.id)
+	}
+
+	roomIds := []*uint64{&room.id}
+	err := room.conn.leave(room.scope, roomIds)
+	if err != nil {
+		return err
+	}
+
+	if roomIds[0] == nil {
+		return fmt.Errorf("Room Id %d not found (anymore)", room.id)
+	}
+
+	return nil
+}
+
 // Emit can be used to emit an event to the room
 // Note: `args` should be an array with positional arguments or nil
 func (room *Room) Emit(event string, args []interface{}) error {
