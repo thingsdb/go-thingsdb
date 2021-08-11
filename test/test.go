@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"time"
 
@@ -89,7 +90,9 @@ func main() {
 	// 	InsecureSkipVerify: true,
 	// }
 	// conn := client.NewConn("35.204.223.30", 9400, conf)
-	conn := thingsdb.NewConn("localhost", 9200, nil)
+	conf := &tls.Config{InsecureSkipVerify: true}
+
+	conn := thingsdb.NewConn("localhost", 9200, conf)
 
 	conn.AddNode("localhost", 9201)
 	conn.AddNode("localhost", 9202)

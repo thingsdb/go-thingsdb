@@ -86,15 +86,14 @@ func example(conn *thingsdb.Conn, ok chan bool) {
 }
 
 func main() {
-	// Optionally, the `NewConn` function accepts SSL configuration which might
-	// be something like:
-	//   conf := &tls.Config{
-	// 	   InsecureSkipVerify: true,
-	//   }
+	// Optionally, the `NewConn` function accepts TLS (SSL) configuration, for example:
+	//
+	//   config := &tls.Config{InsecureSkipVerify: true}
+    //
 	conn := thingsdb.NewConn("localhost", 9200, nil)
 
 	// With conn.AddNode(..) it is possible to add more than one node.
-	// This will be used when a re-connect is triggerd to ensure that the
+	// This will be used when a re-connect is triggered to ensure that the
 	// client quickly finds a new node to connect too. Adding another node is
 	// not required when using a single ThingsDB node or when using a thingsdb
 	// service which handles node distribution.
@@ -207,7 +206,7 @@ if res, err := conn.Query("/t", "'Hello Go Connector for ThingsDB!!';", nil); er
 }
 ```
 
-Arguments can be provided using a `map[string]interace{}`, for example:
+Arguments can be provided using a `map[string]interface{}`, for example:
 
 ```go
 args := map[string]interface{}{
