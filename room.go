@@ -5,6 +5,9 @@ import (
 	"time"
 )
 
+// DefaultWait can be used as default time to wait for a Join
+const DefaultWait = 60 * time.Second
+
 func foo(room *Room) {}
 
 // Room type can be used to join a ThingsDB room
@@ -99,10 +102,9 @@ func (room *Room) join(conn *Conn) error {
 		if room.code == nil {
 			return fmt.Errorf("Code or a room Id > 0 is required")
 		}
-		val, err := conn.Query(room.scope, *room.code, nil, DefaultTimeout)
+		val, err := conn.Query(room.scope, *room.code, nil)
 		if err != nil {
 			return err
-
 		}
 
 		var roomId uint64
@@ -131,7 +133,7 @@ func (room *Room) join(conn *Conn) error {
 		}
 
 		roomIds := []*uint64{&roomId}
-		err = conn.join(room.scope, roomIds, DefaultTimeout)
+		err = conn.join(room.scope, roomIds)
 		if err != nil {
 			return err
 		}
@@ -171,7 +173,7 @@ func (room *Room) onEvent(ev *roomEvent) {
 		if f, ok := room.eventHandlers[ev.Event]; ok {
 			f(room, ev.Args)
 		} else {
-			room.conn.writeDebug("No handler for event: %s", ev.Event)
+			room.conn.logDebug("No handler for event: %s", ev.Event)
 		}
 	}
 }

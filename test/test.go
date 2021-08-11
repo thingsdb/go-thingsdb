@@ -54,7 +54,7 @@ func example(conn *thingsdb.Conn, ok chan bool) {
 		return
 	}
 
-	if res, err = conn.Query("//stuff", "!.has('room') && .room = room();", nil, thingsdb.DefaultTimeout); err != nil {
+	if res, err = conn.Query("//stuff", "!.has('room') && .room = room();", nil); err != nil {
 		println(err.Error())
 	}
 
@@ -62,7 +62,7 @@ func example(conn *thingsdb.Conn, ok chan bool) {
 	room.OnInit = onInit
 	room.OnJoin = onJoin
 	room.HandleEvent("msg", onMsg)
-	err = room.Join(conn, thingsdb.DefaultTimeout)
+	err = room.Join(conn, thingsdb.DefaultWait)
 	if err != nil {
 		println(err.Error())
 	}
@@ -74,7 +74,7 @@ func example(conn *thingsdb.Conn, ok chan bool) {
 	for i < 999 && !stop {
 		time.Sleep(time.Second)
 
-		if res, err = conn.Query("//stuff", ".keys();", nil, thingsdb.DefaultTimeout); err != nil {
+		if res, err = conn.Query("//stuff", ".keys();", nil); err != nil {
 			println(err.Error())
 		} else {
 			fmt.Printf("%v\n", res)
@@ -93,6 +93,8 @@ func main() {
 	// }
 	// conn := client.NewConn("35.204.223.30", 9400, conf)
 	conn := thingsdb.NewConn("localhost", 9200, nil)
+	conn.AddNode("localhost", 9201)
+	conn.AddNode("localhost", 9202)
 	conn.LogLevel = thingsdb.LogDebug
 
 	ok := make(chan bool)
