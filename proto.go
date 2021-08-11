@@ -48,12 +48,14 @@ const (
 	ProtoReqPing Proto = 32
 	// ProtoReqAuth requires `[username, password]`
 	ProtoReqAuth Proto = 33
-	// ProtoReqQuery requires `[scope, query [, arguments]]`
+	// ProtoReqQuery requires `[scope, query [, variable]]`
 	ProtoReqQuery Proto = 34
-	// ProtoReqRun requires `[scope, procedure, arguments....]`
+	// ProtoReqRun requires `[scope, procedure[, arguments]]`
 	ProtoReqRun Proto = 37
-	// ProtoReqJoin requires `[scope, room id's....]`
+	// ProtoReqJoin requires `[scope, room ids...]`
 	ProtoReqJoin Proto = 38
-	// ProtoReqLeave requires `[scope, room id's....]`
+	// ProtoReqLeave requires `[scope, room ids...]`
 	ProtoReqLeave Proto = 39
+	// ProtoReqEmit requires `[scope, roomId, event, arguments...]`
+	ProtoReqEmit Proto = 40
 )

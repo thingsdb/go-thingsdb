@@ -12,16 +12,20 @@ func foo(room *Room) {}
 
 // Room type can be used to join a ThingsDB room
 type Room struct {
+	// Private
 	id            uint64
 	code          *string
 	scope         string
 	conn          *Conn
 	waitJoin      chan error
-	OnInit        func(room *Room)
-	OnJoin        func(room *Room)
-	OnLeave       func(room *Room)
-	OnDelete      func(room *Room)
 	eventHandlers map[string](func(room *Room, args []interface{}))
+
+	// Public
+	OnInit   func(room *Room)
+	OnJoin   func(room *Room)
+	OnLeave  func(room *Room)
+	OnDelete func(room *Room)
+	Data     interface{}
 }
 
 // NewRoom returns a Room by given code. The code should be ThingsDB code which return a Room Id. For example: `.myRoom.id();`
@@ -34,16 +38,20 @@ func NewRoom(scope string, code string) *Room {
 // NewRoomFromId returns a Room by a Scope and Id
 func NewRoomFromId(scope string, id uint64) *Room {
 	return &Room{
+		// Private
 		id:            id,
 		code:          nil,
 		scope:         scope,
 		conn:          nil,
 		waitJoin:      nil,
-		OnInit:        foo,
-		OnJoin:        foo,
-		OnLeave:       foo,
-		OnDelete:      foo,
 		eventHandlers: make(map[string]func(room *Room, args []interface{})),
+
+		// Public
+		OnInit:   foo,
+		OnJoin:   foo,
+		OnLeave:  foo,
+		OnDelete: foo,
+		Data:     nil,
 	}
 }
 
@@ -65,7 +73,7 @@ func (room *Room) HandleEvent(event string, handle func(room *Room, args []inter
 // Join must be called to actually join the Room
 func (room *Room) Join(conn *Conn, wait time.Duration) error {
 
-	if wait != 0 {
+	if wait > 0 {
 		room.waitJoin = make(chan error)
 	}
 
@@ -76,7 +84,7 @@ func (room *Room) Join(conn *Conn, wait time.Duration) error {
 		return err
 	}
 
-	if wait != 0 {
+	if wait > 0 {
 
 		go func() {
 			time.Sleep(wait)
@@ -92,6 +100,15 @@ func (room *Room) Join(conn *Conn, wait time.Duration) error {
 		}
 	}
 	return nil
+}
+
+// Emit can be used to emit an event to the room
+// Note: `args` should be an array with positional arguments or nil
+func (room *Room) Emit(event string, args []interface{}) error {
+	if room.conn == nil {
+		return fmt.Errorf("Room Id %d is not joined", room.id)
+	}
+	return room.conn.Emit(room.scope, room.id, event, args)
 }
 
 func (room *Room) join(conn *Conn) error {
@@ -144,7 +161,15 @@ func (room *Room) join(conn *Conn) error {
 
 		room.id = roomId
 	} else {
+		roomIds := []*uint64{&room.id}
+		err := conn.join(room.scope, roomIds)
+		if err != nil {
+			return err
+		}
 
+		if roomIds[0] == nil {
+			return fmt.Errorf("Room Id %d not found", room.id)
+		}
 	}
 
 	conn.rooms.store[room.id] = room

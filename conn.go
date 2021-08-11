@@ -97,6 +97,7 @@ func (conn *Conn) Connect() error {
 	}
 
 	if conn.AutoReconnect {
+		conn.nodeIdx = -1 // forces to start using node Id 0
 		conn.reconnectLoop()
 	} else {
 		err := conn.connect()
@@ -162,13 +163,14 @@ func (conn *Conn) Run(scope string, procedure string, args interface{}) (interfa
 
 // Emit can be used to emit an event to a room
 // Note: `args` should be an array with positional arguments or nil
-func (conn *Conn) Emit(scope string, roomId uint64, event string, args []interface{}) (interface{}, error) {
+func (conn *Conn) Emit(scope string, roomId uint64, event string, args []interface{}) error {
 	data := []interface{}{scope, roomId, event}
 	if args != nil {
 		data = append(data, args...)
 	}
 
-	return conn.ensure_write(ProtoReqRun, data)
+	_, err := conn.ensure_write(ProtoReqEmit, data)
+	return err
 }
 
 // Close will close an open connection. This will also disable AutoReconnect
@@ -310,7 +312,7 @@ func (conn *Conn) getRespCh(pid uint16, b []byte, timeout time.Duration) (interf
 
 	timeoutCh := make(chan bool, 1)
 
-	if timeout != 0 {
+	if timeout > 0 {
 		go func() {
 			time.Sleep(timeout)
 			timeoutCh <- true
@@ -392,6 +394,7 @@ func (conn *Conn) closeAndReconnect(s string, a ...interface{}) {
 		prev.Close()
 
 		if conn.AutoReconnect {
+			conn.logInfo("Try to reconnect...")
 			go conn.reconnectLoop()
 		}
 	}
@@ -445,7 +448,6 @@ func (conn *Conn) listen() {
 
 func (conn *Conn) reconnectLoop() {
 	sleep := time.Second
-	conn.logInfo("Try to reconnect...")
 	for {
 		conn.nodeIdx += 1
 		conn.nodeIdx %= len(conn.nodes)
