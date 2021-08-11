@@ -14,7 +14,7 @@
     * [IsConnected() -> bool](#IsConnected)
     * [Query(scope, code, vars) -> interface{}, error](#Query)
     * [Run(scope, procedure, args) -> interface{}, error](#Run)
-    * [Emit(scope, roomId, event, args) -> interface{}, error](#Emit-Conn)
+    * [Emit(scope, roomId, event, args) -> error](#Emit-Conn)
     * [Close()](#Close)
   * [Room](#Room)
     * [NewRoom(scope, code) -> *Room](#NewRoom)
@@ -24,7 +24,7 @@
     * [HandleEvent(event, handle)](#HandleEvent)
     * [Join(conn, wait) -> error](#Join)
     * [Leave() -> error](#Leave)
-    * [Emit(event, args) -> interface{}, error](#Emit)
+    * [Emit(event, args) -> error](#Emit)
 
 ---------------------------------------
 
