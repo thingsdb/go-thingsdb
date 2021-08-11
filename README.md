@@ -394,6 +394,12 @@ err := room.Join(conn, thingsdb.DefaultWait)
 
 Use this function to stop listening for events on a room.
 
+*Example:*
+
+```go
+err := room.Leave()
+```
+
 ### Emit
 
 Emit an even to a room.
