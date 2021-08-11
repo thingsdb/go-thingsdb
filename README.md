@@ -95,7 +95,7 @@ func main() {
 	// With conn.AddNode(..) it is possible to add more than one node.
 	// This will be used when a re-connect is triggered to ensure that the
 	// client quickly finds a new node to connect too. Adding another node is
-	// not required when using a single ThingsDB node or when using a thingsdb
+	// not useful when using a single ThingsDB node or when using a thingsdb
 	// service which handles node distribution.
 
 	ok := make(chan bool)
@@ -155,8 +155,8 @@ will be available very quickly after a ThingsDB node is restarted.
 TLS configuration will be shared between all nodes. Thus, it is not possible to
 enable TLS config (or a different) for a single node.
 
-> Node: There is no point in adding another node when using only a single ThingsDB
-> node, or when using a single thingsdb service, for example in Kubernetes
+> Note: It is useless to add another node when using only a single ThingsDB
+> node, or when using a single thingsdb service, for example in Kubernetes.
 
 *Example:*
 
