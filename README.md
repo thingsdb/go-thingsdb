@@ -40,6 +40,8 @@ Make sure [Git](https://git-scm.com/downloads) is installed on your machine and 
 
 ## Quick usage
 
+This is a fully working example of how the Go ThingsDB connector can be used. It might seem a lot of code but this is mostly because comments are added to explain what each line does.
+
 ```go
 package main
 
