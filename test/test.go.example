@@ -1,0 +1,60 @@
+package main
+
+import (
+	"fmt"
+
+	"github.com/thingsdb/go-thingsdb"
+)
+
+func example(conn *thingsdb.Conn, ok chan bool) {
+	defer func(ok chan bool) { ok <- true }(ok)
+
+	// Create the connection, note that after calling connect you still need
+	// too authenticate the connection.
+	if err := conn.Connect(); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// Make sure the connection will be closed at the end of this function
+	defer conn.Close()
+
+	// Here we use a username anf password to authenticate. It is also possible
+	// to use a token with conn.AuthToken("my-secret-token").
+	if err := conn.AuthPassword("admin", "pass"); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// Arguments are optional, if no arguments are required, args may be `nil`
+	args := map[string]interface{}{
+		"a": 6,
+		"b": 7,
+	}
+
+	// Just some example query using collection `stuff`
+	if res, err := conn.Query("//stuff", "a * b;", args); err == nil {
+		fmt.Println(res) // Should print 42, as 6 * 7 = 42
+	} else {
+		fmt.Println(err)
+	}
+}
+
+func main() {
+	// Optionally, the `NewConn` function accepts SSL configuration which might
+	// be something like:
+	//   conf := &tls.Config{
+	// 	   InsecureSkipVerify: true,
+	//   }
+	conn := thingsdb.NewConn("localhost", 9200, nil)
+
+	// With conn.AddNode(..) it is possible to add more than one node.
+	// This will be used when a re-connect is triggerd to ensure that the
+	// client quickly finds a new node to connect too. Adding another node is
+	// not required when using a single ThingsDB node or when using a thingsdb
+	// service which handles node distribution.
+
+	ok := make(chan bool)
+	go example(conn, ok)
+	<-ok // Just to make sure the example code is completed before exit
+}

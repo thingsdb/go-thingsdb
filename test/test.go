@@ -37,34 +37,32 @@ func onMsg(room *thingsdb.Room, args []interface{}) {
 }
 
 func example(conn *thingsdb.Conn, ok chan bool) {
-	var res interface{}
-	var err error
+	defer func(ok chan bool) { ok <- true }(ok)
 
 	if err := conn.Connect(); err != nil {
-		println(err.Error())
-		ok <- false
+		fmt.Println(err)
 		return
 	}
 
 	defer conn.Close()
 
 	if err := conn.AuthPassword("admin", "pass"); err != nil {
-		println(err.Error())
-		ok <- false
+		fmt.Println(err)
 		return
 	}
 
-	if res, err = conn.Query("//stuff", "!.has('room') && .room = room();", nil); err != nil {
-		println(err.Error())
+	if _, err := conn.Query("//stuff", "!.has('room') && .room = room();", nil); err != nil {
+		fmt.Println(err)
+		return
 	}
 
 	room := thingsdb.NewRoom("//stuff", ".room.id();")
 	room.OnInit = onInit
 	room.OnJoin = onJoin
 	room.HandleEvent("msg", onMsg)
-	err = room.Join(conn, thingsdb.DefaultWait)
+	err := room.Join(conn, thingsdb.DefaultWait)
 	if err != nil {
-		println(err.Error())
+		fmt.Println(err)
 	}
 
 	counter := 0
@@ -74,17 +72,16 @@ func example(conn *thingsdb.Conn, ok chan bool) {
 	for i < 999 && !stop {
 		time.Sleep(time.Second)
 
-		if res, err = conn.Query("//stuff", ".keys();", nil); err != nil {
-			println(err.Error())
+		if res, err := conn.Query("//stuff", ".keys();", nil); err != nil {
+			fmt.Println(err)
 		} else {
-			fmt.Printf("%v\n", res)
+			fmt.Println(res)
 			counter += 1
 		}
 		i += 1
 	}
 
 	fmt.Printf("Succes count: %d  Total count: %d\n", counter, i)
-	ok <- true
 }
 
 func main() {
@@ -93,8 +90,10 @@ func main() {
 	// }
 	// conn := client.NewConn("35.204.223.30", 9400, conf)
 	conn := thingsdb.NewConn("localhost", 9200, nil)
+
 	conn.AddNode("localhost", 9201)
 	conn.AddNode("localhost", 9202)
+
 	conn.LogLevel = thingsdb.LogDebug
 
 	ok := make(chan bool)

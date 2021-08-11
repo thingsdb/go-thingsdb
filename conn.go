@@ -31,17 +31,20 @@ const (
 
 // Conn is a ThingsDB connection to a single node.
 type Conn struct {
-	nodes          []node
-	nodeIdx        int
-	pid            uint16
-	token          *string
-	username       *string
-	password       *string
-	buf            *buffer
-	respMap        map[uint16]chan *pkg
-	ssl            *tls.Config
-	mux            sync.Mutex
-	rooms          *roomStore
+	// Private
+	nodes    []node
+	nodeIdx  int
+	pid      uint16
+	token    *string
+	username *string
+	password *string
+	buf      *buffer
+	respMap  map[uint16]chan *pkg
+	config   *tls.Config
+	mux      sync.Mutex
+	rooms    *roomStore
+
+	// Public
 	DefaultTimeout time.Duration
 	AutoReconnect  bool
 	PingInterval   time.Duration
@@ -50,19 +53,22 @@ type Conn struct {
 }
 
 // NewConn creates a new connection
-func NewConn(host string, port uint16, ssl *tls.Config) *Conn {
+func NewConn(host string, port uint16, config *tls.Config) *Conn {
 	return &Conn{
-		nodes:          []node{{host: host, port: port}},
-		nodeIdx:        0,
-		pid:            0,
-		token:          nil,
-		username:       nil,
-		password:       nil,
-		buf:            newBuffer(),
-		respMap:        make(map[uint16]chan *pkg),
-		ssl:            ssl,
-		mux:            sync.Mutex{},
-		rooms:          newRoomStore(),
+		// Private
+		nodes:    []node{{host: host, port: port}},
+		nodeIdx:  0,
+		pid:      0,
+		token:    nil,
+		username: nil,
+		password: nil,
+		buf:      newBuffer(),
+		respMap:  make(map[uint16]chan *pkg),
+		config:   config,
+		mux:      sync.Mutex{},
+		rooms:    newRoomStore(),
+
+		// Public
 		DefaultTimeout: 0,
 		AutoReconnect:  true,
 		PingInterval:   defaultPingInterval,
@@ -203,7 +209,7 @@ func (conn *Conn) auth() error {
 
 func (conn *Conn) connect() error {
 	node := conn.node()
-	if conn.ssl == nil {
+	if conn.config == nil {
 		cn, err := net.Dial("tcp", conn.ToString())
 		if err != nil {
 			return err
@@ -211,7 +217,7 @@ func (conn *Conn) connect() error {
 		conn.logInfo("Connected to %s:%d", node.host, node.port)
 		conn.buf.conn = cn
 	} else {
-		cn, err := tls.Dial("tcp", conn.ToString(), conn.ssl)
+		cn, err := tls.Dial("tcp", conn.ToString(), conn.config)
 		if err != nil {
 			return err
 		}
