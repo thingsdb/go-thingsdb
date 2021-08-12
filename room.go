@@ -43,7 +43,7 @@ func NewRoom(scope string, code string) *Room {
 
 // NewRoomFromId creates a new room using a room Id.
 //
-// If the room Id unknown, you may use [NewRoom](#NewRoom) to get the Id for the room by code.
+// If the room Id unknown, you may want use `NewRoom(..)` to get the Id for the room by code.
 //
 // Example:
 //
@@ -71,7 +71,7 @@ func NewRoomFromId(scope string, id uint64) *Room {
 
 // Id returns the Id of the room.
 //
-// > Note: If the room was created using `NewRoom(..)`, then the Id will return `0` as long as the room is not joined.
+// > Note: Id() returns `0` when the room was created using `NewRoom(..)` and the room has never been joined.
 func (room *Room) Id() uint64 {
 	return room.id
 }
@@ -86,18 +86,18 @@ func (room *Room) Scope() string {
 // Example:
 //
 //     func onNewMessage(room *thingsdb.Room, args []interface{}) {
-//     	if len(args) != 1 {
-//     		fmt.Println("Invalid number of arguments")
-//     		return
-//     	}
+//         if len(args) != 1 {
+//            fmt.Println("Invalid number of arguments")
+//            return
+//         }
 //
-//     	msg, ok := args[0].(string)
-//     	if !ok {
-//     		fmt.Println("Expecting argument 1 to be of type string")
-//     		return
-//     	}
+//         msg, ok := args[0].(string)
+//         if !ok {
+//            fmt.Println("Expecting argument 1 to be of type string")
+//            return
+//         }
 //
-//     	fmt.Println(msg)  // Just print the message
+//         fmt.Println(msg)  // Just print the message
 //     }
 //
 //     room = thingsdb.NewRoom("//stuff", ".chatRoom.id();")

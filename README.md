@@ -335,7 +335,7 @@ room := thingsdb.NewRoom("//stuff", ".room.id();")
 
 NewRoomFromId creates a new room using a room Id.
 
-If the room Id unknown, you may use [NewRoom](#NewRoom) to get the Id for the room by code.
+If the room Id unknown, you may want use [NewRoom(..)](#NewRoom) to get the Id for the room by code.
 
 *Example:*
 
@@ -348,7 +348,7 @@ room := thingsdb.NewRoomFromId("//stuff", 17)
 
 Id returns the Id of the room.
 
-> Note: If the room was created using `NewRoom(..)`, then the Id will return `0` as long as the room is not joined.
+> Note: Id() returns `0` when the room was created using [NewRoom(..)](#NewRoom) and the room has never been joined.
 
 ### Scope
 
