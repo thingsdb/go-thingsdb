@@ -15,6 +15,7 @@ import (
 const defaultPingInterval = 30 * time.Second
 const pingTimout = 5 * time.Second
 const authTimeout = 10 * time.Second
+const maxReconnectSleep = time.Minute
 
 type LogLevelType int8
 
@@ -52,7 +53,19 @@ type Conn struct {
 	LogLevel       LogLevelType
 }
 
-// NewConn creates a new connection
+// NewConn creates a new ThingsDB Connector.
+//
+// Example:
+//
+//     thingsdb.NewConn("localhost", 9200, nil)
+//
+// Or, with TLS (SSL) config enabled
+//
+//     config := &tls.Config{
+//         InsecureSkipVerify: true,
+//     }
+//     thingsdb.NewConn("localhost", 9200, config)
+//
 func NewConn(host string, port uint16, config *tls.Config) *Conn {
 	return &Conn{
 		// Private
@@ -77,11 +90,34 @@ func NewConn(host string, port uint16, config *tls.Config) *Conn {
 	}
 }
 
+// AddNone adds another node to the connector.
+
+// The connection will switch between
+// available nodes when a re-connect is triggered. This ensures that the connection
+// will be available very quickly after a ThingsDB node is restarted.
+//
+// TLS configuration will be shared between all nodes. Thus, it is not possible to
+// enable TLS config (or a different) for a single node.
+//
+// > Note: It is useless to add another node when using only a single ThingsDB
+// node, or when using a single thingsdb service, for example in Kubernetes.
+//
+// Example:
+//
+//     conn := thingsdb.NewConn("node1.local", 9200, nil)
+//     conn.AddNode("node2.local", 9200)
+//     conn.AddNode("node3.local", 9200)
+//
 func (conn *Conn) AddNode(host string, port uint16) {
 	conn.nodes = append(conn.nodes, node{host: host, port: port})
 }
 
-// ToString returns a string representing the connection and port.
+// ToString prints the current node address used by the connection.
+//
+// Example:
+//
+//     thingsdb.NewConn("localhost", 9200, nil).ToString()  // "localhost:9200"
+//
 func (conn *Conn) ToString() string {
 	node := conn.node()
 	if strings.Count(node.host, ":") > 0 {
@@ -131,7 +167,9 @@ func (conn *Conn) AuthToken(token string) error {
 	return err
 }
 
-// IsConnected returns true when connected.
+// IsConnected returns `true` when the connector is connected to ThingsDB, `false` if not.
+//
+// > Note: this function does not care is the connection is authenticated
 func (conn *Conn) IsConnected() bool {
 	conn.mux.Lock()
 	connected := conn.buf.conn != nil
@@ -140,7 +178,24 @@ func (conn *Conn) IsConnected() bool {
 	return connected
 }
 
-// Query sends a query and returns the result.
+// Query ThingsDB using code.
+//
+// Example:
+//
+//     if res, err := conn.Query("/t", "'Hello Go Connector for ThingsDB!!';", nil); err == nil {
+//         fmt.Println(res)  // "Hello Go Connector for ThingsDB!!"
+//     }
+//
+// Arguments can be provided using a `map[string]interface{}`, for example:
+//
+//     args := map[string]interface{}{
+//         "name": "Alice",
+//     }
+//
+//     if res, err := conn.Query("/t", "`Hello {name}!!`;", args); err == nil {
+//         fmt.Println(res) // "Hello Alice!!"
+//     }
+//
 func (conn *Conn) Query(scope string, code string, vars map[string]interface{}) (interface{}, error) {
 	data := []interface{}{scope, code}
 	if vars != nil {
@@ -150,8 +205,41 @@ func (conn *Conn) Query(scope string, code string, vars map[string]interface{}) 
 	return conn.ensure_write(ProtoReqQuery, data)
 }
 
-// Run can be used to run a stored procedure in a scope
-// Note: `args` should be an array with positional arguments or a map[string] with keyword arguments or nil
+// Run a procedure in ThingsDB. Arguments are optional and may be either positional `[]interface{}` or by map `map[string]interface{}`.
+//
+// Example without arguments:
+//
+//     // Suppose collection `stuff` has the following procedure:
+//     // new_procedure('greet', || 'Hi');
+//
+//     if res, err := conn.Run("//stuff", "greet", nil); err == nil {
+//         fmt.Println(res)  // "Hi"
+//     }
+//
+// Example using positional arguments:
+//
+//     // Suppose collection `stuff` has the following procedure:
+//     // new_procedure('subtract', |a, b| a - b);
+//
+//     args := []interface{}{40, 10}
+//
+//     if res, err := conn.Run("//stuff", "subtract", args); err == nil {
+//         fmt.Println(res)  // 30
+//     }
+//
+// Example using mapped arguments:
+//
+//     // Suppose collection `stuff` has the following procedure:
+//     // new_procedure('subtract', |a, b| a - b);
+//
+//     args := map[string]interface{}{
+//         "a": 15,
+//         "b": 5,
+//     }
+//     if res, err := conn.Run("//stuff", "subtract", args); err == nil {
+//         fmt.Println(res)  // 10
+//     }
+// ```
 func (conn *Conn) Run(scope string, procedure string, args interface{}) (interface{}, error) {
 	data := []interface{}{scope, procedure}
 	if args != nil {
@@ -161,8 +249,22 @@ func (conn *Conn) Run(scope string, procedure string, args interface{}) (interfa
 	return conn.ensure_write(ProtoReqRun, data)
 }
 
-// Emit can be used to emit an event to a room
-// Note: `args` should be an array with positional arguments or nil
+// Emit an even to a room.
+//
+// If a `Room` is created for the given `roomId`, you probable want to
+// use Emit(..) on the `Room` type.
+//
+// Example:
+//
+//     args := []interface{}{"This is a message"}
+//
+//     err := conn.Emit(
+//         "//stuff",      // scope of the Room
+//         123,            // Room Id
+//         "new-message",  // Event to emit
+//         args            // Arguments (may be nil)
+//     );
+//
 func (conn *Conn) Emit(scope string, roomId uint64, event string, args []interface{}) error {
 	data := []interface{}{scope, roomId, event}
 	if args != nil {
@@ -173,9 +275,11 @@ func (conn *Conn) Emit(scope string, roomId uint64, event string, args []interfa
 	return err
 }
 
-// Close will close an open connection. This will also disable AutoReconnect
-// so make sure to re-enable AutoReconnect if you wish to make a new call to
-// Connect()
+// Close an open connection.
+//
+// > Warning: After calling Close(), the `conn.AutoReconnect` property will be
+// set to `false`. Thus, if you later want to `Connect()` again, make
+// sure to re-enable this property manually.
 func (conn *Conn) Close() {
 	conn.mux.Lock()
 
@@ -468,8 +572,10 @@ func (conn *Conn) reconnectLoop() {
 
 		time.Sleep(sleep)
 
-		if sleep < 120*time.Second {
-			sleep *= 2
+		sleep *= 2
+
+		if sleep > maxReconnectSleep {
+			sleep = maxReconnectSleep
 		}
 	}
 }

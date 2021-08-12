@@ -1,5 +1,7 @@
 # Go connector for ThingsDB
 
+![Go ThingsDB](assets/go-thingsdb.png?raw=true "Go ThingsDB!!")
+
 ---------------------------------------
 
   * [Installation](#installation)
@@ -178,19 +180,19 @@ thingsdb.NewConn("localhost", 9200, nil).ToString()  // "localhost:9200"
 
 ### Connect
 
-Create the ThingsDB connection.
+Connect creates the TCP connection to the node.
 
 ### AuthPassword
 
-Authenticate with a username and password.
+AuthPassword can be used to authenticate a connection using a username and password.
 
 ### AuthToken
 
-Authenticate with a token
+AuthToken can be used to authenticate a connection using a token.
 
 ### IsConnected
 
-Returns `true` is the connector is connected to ThingsDB, `false` if not.
+IsConnected returns `true` when the connector is connected to ThingsDB, `false` if not.
 
 > Note: this function does not care is the connection is authenticated
 
@@ -289,6 +291,8 @@ Close an open connection.
 
 ## Room
 
+Room type can be used to join a ThingsDB room.
+
 Key        | Type         | Default      | Description
 -----------| ------------ | ------------ | -----------
 OnInit     | func(\*Room) | *dummy func* | Called only once at the first join. This function will run before the OnJoin.
@@ -318,7 +322,7 @@ room.OnJoin = onJoin
 
 ### NewRoom
 
-Create a new room using code. The code should return the room Id for the room.
+NewRoom creates a new room using code. The code should return the room Id for the room.
 
 *Example:*
 
@@ -329,7 +333,7 @@ room := thingsdb.NewRoom("//stuff", ".room.id();")
 
 ### NewRoomFromId
 
-Create a new room using a room Id.
+NewRoomFromId creates a new room using a room Id.
 
 If the room Id unknown, you may use [NewRoom](#NewRoom) to get the Id for the room by code.
 
@@ -342,30 +346,30 @@ room := thingsdb.NewRoomFromId("//stuff", 17)
 
 ### Id
 
-Return the Id for the room.
+Id returns the Id of the room.
 
-> Note: If the room was created using `NewRoom(..)`, then the Id will be `0` as long as the room is not joined.
+> Note: If the room was created using `NewRoom(..)`, then the Id will return `0` as long as the room is not joined.
 
 ### Scope
 
-Return the scope of the room.
+Scope returns the Room Scope
 
 ### HandleEvent
 
-Add event handlers to the room.
+HandleEvent adds an event handler to the room.
 
 *Example:*
 
 ```go
 func onNewMessage(room *thingsdb.Room, args []interface{}) {
 	if len(args) != 1 {
-		fmt.Println("Invalid argument length")
+		fmt.Println("Invalid number of arguments")
 		return
 	}
 
 	msg, ok := args[0].(string)
 	if !ok {
-		fmt.Println("Expecting message to type string")
+		fmt.Println("Expecting argument 1 to be of type string")
 		return
 	}
 
@@ -374,13 +378,13 @@ func onNewMessage(room *thingsdb.Room, args []interface{}) {
 
 room = thingsdb.NewRoom("//stuff", ".chatRoom.id();")
 
-// Add an event handler for the "new-message" event
+// Add event handler for the "new-message" event
 room.HandleEvent("new-message", onNewMessage)
 ```
 
 ### Join
 
-Function `Join()` must be called to actually join the room.
+Join must be called to actually join the room.
 
 The `wait` argument may be set to `0` to tell the room not to wait for the join to complete.
 If `wait` is set to any other positive value, then both the `OnInit` and `OnJoin` are called (in this order) before the call to Join returns unless the `OnJoin` is not completed before the `wait` duration (an error will be returned).
@@ -393,7 +397,7 @@ err := room.Join(conn, thingsdb.DefaultWait)
 
 ### Leave
 
-Use this function to stop listening for events on a room.
+Leave will stop listening for events on a room.
 
 *Example:*
 

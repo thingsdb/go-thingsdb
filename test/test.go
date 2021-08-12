@@ -66,6 +66,8 @@ func example(conn *thingsdb.Conn, ok chan bool) {
 		fmt.Println(err)
 	}
 
+	var r thingsdb.Room
+
 	counter := 0
 	i := 0
 	stop = false

@@ -28,14 +28,28 @@ type Room struct {
 	Data     interface{}
 }
 
-// NewRoom returns a Room by given code. The code should be ThingsDB code which return a Room Id. For example: `.myRoom.id();`
+// NewRoom creates a new room using code. The code should return the room Id for the room.
+//
+// Example:
+//
+//     // Suppose Collection stuff has a room (.room)
+//     room := thingsdb.NewRoom("//stuff", ".room.id();")
+//
 func NewRoom(scope string, code string) *Room {
 	room := NewRoomFromId(scope, 0)
 	room.code = &code
 	return room
 }
 
-// NewRoomFromId returns a Room by a Scope and Id
+// NewRoomFromId creates a new room using a room Id.
+//
+// If the room Id unknown, you may use [NewRoom](#NewRoom) to get the Id for the room by code.
+//
+// Example:
+//
+//     // Suppose Collection stuff has a room with Id 17
+//     room := thingsdb.NewRoomFromId("//stuff", 17)
+//
 func NewRoomFromId(scope string, id uint64) *Room {
 	return &Room{
 		// Private
@@ -55,7 +69,9 @@ func NewRoomFromId(scope string, id uint64) *Room {
 	}
 }
 
-// Id returns the Room Id (0 when the room Id is not resolved yet)
+// Id returns the Id of the room.
+//
+// > Note: If the room was created using `NewRoom(..)`, then the Id will return `0` as long as the room is not joined.
 func (room *Room) Id() uint64 {
 	return room.id
 }
@@ -65,12 +81,45 @@ func (room *Room) Scope() string {
 	return room.scope
 }
 
-// HandleEvent can be used to add an event handler
+// HandleEvent adds an event handler to the room.
+//
+// Example:
+//
+//     func onNewMessage(room *thingsdb.Room, args []interface{}) {
+//     	if len(args) != 1 {
+//     		fmt.Println("Invalid number of arguments")
+//     		return
+//     	}
+//
+//     	msg, ok := args[0].(string)
+//     	if !ok {
+//     		fmt.Println("Expecting argument 1 to be of type string")
+//     		return
+//     	}
+//
+//     	fmt.Println(msg)  // Just print the message
+//     }
+//
+//     room = thingsdb.NewRoom("//stuff", ".chatRoom.id();")
+//
+//     // Add event handler for the "new-message" event
+//     room.HandleEvent("new-message", onNewMessage)
+//
 func (room *Room) HandleEvent(event string, handle func(room *Room, args []interface{})) {
 	room.eventHandlers[event] = handle
 }
 
-// Join must be called to actually join the Room
+// Join must be called to actually join the room.
+//
+// The `wait` argument may be set to `0` to tell the room not to wait for the join to complete.
+// If `wait` is set to any other positive value, then both the `OnInit` and `OnJoin` are
+// called (in this order) before the call to Join returns unless the `OnJoin` is not completed
+// before the `wait` duration (an error will be returned).
+//
+// Example:
+//
+//     err := room.Join(conn, thingsdb.DefaultWait)
+//
 func (room *Room) Join(conn *Conn, wait time.Duration) error {
 
 	if wait > 0 {
@@ -102,7 +151,12 @@ func (room *Room) Join(conn *Conn, wait time.Duration) error {
 	return nil
 }
 
-// Leave can be used to leave a room
+// Leave will stop listening for events on a room.
+//
+// Example:
+//
+//    err := room.Leave()
+//
 func (room *Room) Leave() error {
 	if room.id == 0 {
 		return fmt.Errorf("Room Id is zero (0), most likely the room has never been joined")
@@ -125,8 +179,17 @@ func (room *Room) Leave() error {
 	return nil
 }
 
-// Emit can be used to emit an event to the room
-// Note: `args` should be an array with positional arguments or nil
+// Emit an even to a room.
+//
+// Example:
+//
+//     args := []interface{}{"Just some chat message"}
+//
+//     err := room.Emit(
+//         "new-message",  // Event to emit
+//         args            // Arguments (may be nil)
+//     );
+//
 func (room *Room) Emit(event string, args []interface{}) error {
 	if room.conn == nil {
 		return fmt.Errorf("Room Id %d is not joined", room.id)
