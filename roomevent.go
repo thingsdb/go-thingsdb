@@ -4,7 +4,7 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-// RoomEvent is an event dedicated to the rooms API (Join/Leave/Emit/Delete)
+// roomEvent is an event dedicated to the rooms API (Join/Leave/Emit/Delete)
 type roomEvent struct {
 	Tp    Proto
 	Id    uint64        `msgpack:"id"`
