@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"fmt"
 	"time"
 
@@ -66,8 +65,6 @@ func example(conn *thingsdb.Conn, ok chan bool) {
 		fmt.Println(err)
 	}
 
-	var r thingsdb.Room
-
 	counter := 0
 	i := 0
 	stop = false
@@ -89,12 +86,12 @@ func example(conn *thingsdb.Conn, ok chan bool) {
 
 func main() {
 	// conf := &tls.Config{
-	// 	InsecureSkipVerify: true,
+	// 	InsecureSkipVerify: false,
 	// }
 	// conn := client.NewConn("35.204.223.30", 9400, conf)
-	conf := &tls.Config{InsecureSkipVerify: true}
+	// conf := &tls.Config{InsecureSkipVerify: false}
 
-	conn := thingsdb.NewConn("localhost", 9200, conf)
+	conn := thingsdb.NewConn("localhost", 9200, nil)
 
 	conn.AddNode("localhost", 9201)
 	conn.AddNode("localhost", 9202)

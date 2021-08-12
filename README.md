@@ -90,7 +90,7 @@ func example(conn *thingsdb.Conn, ok chan bool) {
 func main() {
 	// Optionally, the `NewConn` function accepts TLS (SSL) configuration, for example:
 	//
-	//   config := &tls.Config{InsecureSkipVerify: true}
+	//   config := &tls.Config{InsecureSkipVerify: false}
     //
 	conn := thingsdb.NewConn("localhost", 9200, nil)
 
@@ -143,7 +143,7 @@ Or, with TLS (SSL) config enabled
 
 ```go
 config := &tls.Config{
-    InsecureSkipVerify: true,
+    InsecureSkipVerify: false,
 }
 thingsdb.NewConn("localhost", 9200, config)
 ```

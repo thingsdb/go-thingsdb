@@ -62,7 +62,7 @@ type Conn struct {
 // Or, with TLS (SSL) config enabled
 //
 //     config := &tls.Config{
-//         InsecureSkipVerify: true,
+//         InsecureSkipVerify: false,
 //     }
 //     thingsdb.NewConn("localhost", 9200, config)
 //

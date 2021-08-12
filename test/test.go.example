@@ -44,7 +44,7 @@ func main() {
 	// Optionally, the `NewConn` function accepts SSL configuration which might
 	// be something like:
 	//   conf := &tls.Config{
-	// 	   InsecureSkipVerify: true,
+	// 	   InsecureSkipVerify: false,
 	//   }
 	conn := thingsdb.NewConn("localhost", 9200, nil)
 
