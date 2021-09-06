@@ -399,7 +399,7 @@ func getResult(respCh chan *pkg, timeoutCh chan bool) (interface{}, error) {
 	return result, err
 }
 
-func (conn *Conn) increPid() uint16 {
+func (conn *Conn) nextPid() uint16 {
 	conn.mux.Lock()
 	pid := conn.pid
 	conn.pid++
@@ -439,7 +439,7 @@ func (conn *Conn) getRespCh(pid uint16, b []byte, timeout time.Duration) (interf
 
 func (conn *Conn) ensure_write(tp Proto, data interface{}) (interface{}, error) {
 
-	pid := conn.increPid()
+	pid := conn.nextPid()
 	b, err := pkgPack(pid, tp, data)
 
 	if err != nil {
@@ -479,7 +479,7 @@ func (conn *Conn) write(tp Proto, data interface{}, timeout time.Duration) (inte
 		return nil, fmt.Errorf("not connected")
 	}
 
-	pid := conn.increPid()
+	pid := conn.nextPid()
 	b, err := pkgPack(pid, tp, data)
 
 	if err != nil {
