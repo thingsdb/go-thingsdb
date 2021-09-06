@@ -275,6 +275,27 @@ func (conn *Conn) Emit(scope string, roomId uint64, event string, args []interfa
 	return err
 }
 
+// Get room from id.
+//
+// If a `Room` is created for the given `roomId`, you probable want to
+// get it back from the roomStore.
+//
+// Example:
+//
+//     room, err := conn.GetRoomFromId(
+//         123,            // Room Id
+//     );
+//
+func (conn *Conn) GetRoomFromId(roomId uint64) (*Room, error) {
+	room, ok := conn.rooms.getRoom(roomId)
+
+	if !ok {
+		return nil, fmt.Errorf("Room Id %d not found (anymore)", roomId)
+	}
+
+	return room, nil
+}
+
 // Close an open connection.
 //
 // > Warning: After calling Close(), the `conn.AutoReconnect` property will be
@@ -343,7 +364,8 @@ func (conn *Conn) joinOrLeave(proto Proto, scope string, ids []*uint64) error {
 	for i, v := range ids {
 		data[1+i] = v
 	}
-	res, err := conn.ensure_write(ProtoReqJoin, data)
+	res, err := conn.ensure_write(proto, data)
+
 	if err == nil {
 		arr, ok := res.([]interface{})
 		if !ok {

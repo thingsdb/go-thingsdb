@@ -8,7 +8,8 @@ import (
 // DefaultWait can be used as default time to wait for a Join
 const DefaultWait = 60 * time.Second
 
-func foo(room *Room) {}
+func foo(room *Room)                                              {}
+func bar(room *Room, id uint64, event string, args []interface{}) {}
 
 // Room type can be used to join a ThingsDB room
 type Room struct {
@@ -25,6 +26,7 @@ type Room struct {
 	OnJoin   func(room *Room)
 	OnLeave  func(room *Room)
 	OnDelete func(room *Room)
+	OnEvent  func(room *Room, id uint64, event string, args []interface{})
 	Data     interface{}
 }
 
@@ -65,6 +67,7 @@ func NewRoomFromId(scope string, id uint64) *Room {
 		OnJoin:   foo,
 		OnLeave:  foo,
 		OnDelete: foo,
+		OnEvent:  bar,
 		Data:     nil,
 	}
 }
@@ -148,6 +151,7 @@ func (room *Room) Join(conn *Conn, wait time.Duration) error {
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -285,6 +289,9 @@ func (room *Room) onEvent(ev *roomEvent) {
 			f(room, ev.Args)
 		} else {
 			room.conn.logDebug("No handler for event: %s", ev.Event)
+
+			// need an onEvent handler TODO
+			room.OnEvent(room, ev.Id, ev.Event, ev.Args)
 		}
 	}
 }
