@@ -290,9 +290,6 @@ func (room *Room) onEvent(ev *roomEvent) {
 		if f, ok := room.eventHandlers[ev.Event]; ok {
 			f(room, ev.Args)
 		} else {
-			room.conn.logDebug("No handler for event: %s", ev.Event)
-
-			// Call OnEmit when no handler is implemented
 			room.OnEmit(room, ev.Event, ev.Args)
 		}
 	}

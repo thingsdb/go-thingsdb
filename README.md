@@ -301,7 +301,7 @@ OnInit     | func(\*Room) | *dummy func* | Called only once at the first join. T
 OnJoin     | func(\*Room) | *dummy func* | Called at each join, thus also after a re-connect.
 OnLeave    | func(\*Room) | *dummy func* | Called only when a room is explicitly left (A call to [room.Leave()](#Leave)).
 OnDelete   | func(\*Room) | *dummy func* | Called when the room is removed from ThingsDB.
-OnEmit     | func(\*Room, event *string*, args *[]interface{}*) | *dummy func* | Called only when [***no event handler***](#HandleEvent) is configured for the event.
+OnEmit     | func(\*Room, event *string*, args *[]interface{}*) | *dummy func* | Called only when [*no event handler*](#HandleEvent) is configured for the event.
 Data       | interface{}  | `nil`        | Free to use, for example to assign additional data to the room *(Data stays untouched by the connector)*.
 
 *Example configuring the OnInit and OnJoin functions:*
