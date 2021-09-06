@@ -51,6 +51,8 @@ type Conn struct {
 	PingInterval   time.Duration
 	LogCh          chan string
 	LogLevel       LogLevelType
+	OnNodeStatus   func(ns *NodeStatus)
+	OnWarning      func(we *WarnEvent)
 }
 
 // NewConn creates a new ThingsDB Connector.
@@ -87,6 +89,8 @@ func NewConn(host string, port uint16, config *tls.Config) *Conn {
 		PingInterval:   defaultPingInterval,
 		LogCh:          nil,
 		LogLevel:       LogWarning,
+		OnNodeStatus:   nil,
+		OnWarning:      nil,
 	}
 }
 
@@ -273,27 +277,6 @@ func (conn *Conn) Emit(scope string, roomId uint64, event string, args []interfa
 
 	_, err := conn.ensure_write(ProtoReqEmit, data)
 	return err
-}
-
-// Get room from id.
-//
-// If a `Room` is created for the given `roomId`, you probable want to
-// get it back from the roomStore.
-//
-// Example:
-//
-//     room, err := conn.GetRoomFromId(
-//         123,            // Room Id
-//     );
-//
-func (conn *Conn) GetRoomFromId(roomId uint64) (*Room, error) {
-	room, ok := conn.rooms.getRoom(roomId)
-
-	if !ok {
-		return nil, fmt.Errorf("Room Id %d not found (anymore)", roomId)
-	}
-
-	return room, nil
 }
 
 // Close an open connection.
@@ -535,6 +518,10 @@ func (conn *Conn) listen() {
 			case ProtoOnNodeStatus:
 				nodeStatus, err := newNodeStatus(pkg)
 				if err == nil {
+					if conn.OnNodeStatus != nil {
+						conn.OnNodeStatus(nodeStatus)
+					}
+
 					if nodeStatus.Status == "SHUTTING_DOWN" {
 						conn.closeAndReconnect("Node %d is shutting down... (%s)", nodeStatus.Id, conn.ToString())
 					} else {
@@ -544,7 +531,11 @@ func (conn *Conn) listen() {
 			case ProtoOnWarn:
 				warnEvent, err := newWarnEvent(pkg)
 				if err == nil {
-					conn.logWarning("Warning from ThingsDB: %s (%d)", warnEvent.Msg, warnEvent.Code)
+					if conn.OnWarning == nil {
+						conn.logWarning("Warning from ThingsDB: %s (%d)", warnEvent.Msg, warnEvent.Code)
+					} else {
+						conn.OnWarning(warnEvent)
+					}
 				}
 			case ProtoOnRoomDelete, ProtoOnRoomEvent, ProtoOnRoomJoin, ProtoOnRoomLeave:
 				ev, err := newRoomEvent(pkg)

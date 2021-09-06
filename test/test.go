@@ -84,6 +84,10 @@ func example(conn *thingsdb.Conn, ok chan bool) {
 	fmt.Printf("Succes count: %d  Total count: %d\n", counter, i)
 }
 
+func onNodeStatus(ns *thingsdb.NodeStatus) {
+	println(ns.Status)
+}
+
 func main() {
 	// conf := &tls.Config{
 	// 	InsecureSkipVerify: false,
@@ -97,6 +101,7 @@ func main() {
 	conn.AddNode("localhost", 9202)
 
 	conn.LogLevel = thingsdb.LogDebug
+	conn.OnNodeStatus = onNodeStatus
 
 	ok := make(chan bool)
 

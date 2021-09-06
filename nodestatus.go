@@ -4,16 +4,16 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-// nodeStatus is used for the node status event
-type nodeStatus struct {
+// NodeStatus is used for the node status event
+type NodeStatus struct {
 	Id     uint32 `msgpack:"id"`
 	Status string `msgpack:"status"`
 }
 
 // newNodeStatus creates a new node status
-func newNodeStatus(pkg *pkg) (*nodeStatus, error) {
+func newNodeStatus(pkg *pkg) (*NodeStatus, error) {
 
-	var result nodeStatus
+	var result NodeStatus
 	err := msgpack.Unmarshal(pkg.data, &result)
 	if err != nil {
 		return nil, err
