@@ -88,6 +88,10 @@ func onNodeStatus(ns *thingsdb.NodeStatus) {
 	println(ns.Status)
 }
 
+func onWarn(we *thingsdb.WarnEvent) {
+	println(we.Msg)
+}
+
 func main() {
 	// conf := &tls.Config{
 	// 	InsecureSkipVerify: false,
@@ -101,7 +105,10 @@ func main() {
 	conn.AddNode("localhost", 9202)
 
 	conn.LogLevel = thingsdb.LogDebug
+
+	// Optionally, we can set the OnNodeStatus and OnWarning callbacks...
 	conn.OnNodeStatus = onNodeStatus
+	conn.OnWarning = onWarn
 
 	ok := make(chan bool)
 
