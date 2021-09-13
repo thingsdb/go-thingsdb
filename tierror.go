@@ -1,7 +1,7 @@
 package thingsdb
 
 import (
-	"github.com/vmihailenco/msgpack/v4"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 // ErrorCode known by ThingsDB
@@ -61,29 +61,26 @@ const (
 	InternalError ErrorCode = ErrorCode(-1)
 )
 
-// Error can be returned by the siridb package.
-type Error struct {
+// TiError can be returned by the ThingsDB package.
+type TiError struct {
 	msg  string
 	code ErrorCode
 }
 
-// Err pointer
-type Err *Error
-
 // NewError returns a pointer to a new Error.
-func NewError(msg string, code ErrorCode) Err {
-	return &Error{
+func NewTiError(msg string, code ErrorCode) *TiError {
+	return &TiError{
 		msg:  msg,
 		code: code,
 	}
 }
 
-// NewErrorFromByte returns a pointer to a new Error from msgpack byte data.
-func NewErrorFromByte(b []byte) *Error {
+// NewTiErrorFromByte returns a pointer to a new Error from msgpack byte data.
+func NewTiErrorFromByte(b []byte) *TiError {
 	var result interface{}
 	err := msgpack.Unmarshal(b, &result)
 	if err != nil {
-		return &Error{
+		return &TiError{
 			msg:  err.Error(),
 			code: UnpackError,
 		}
@@ -91,7 +88,7 @@ func NewErrorFromByte(b []byte) *Error {
 
 	errMap, ok := result.(map[string]interface{})
 	if !ok {
-		return &Error{
+		return &TiError{
 			msg:  "expected a map",
 			code: UnpackError,
 		}
@@ -99,7 +96,7 @@ func NewErrorFromByte(b []byte) *Error {
 
 	msg, ok := errMap["error_msg"].(string)
 	if !ok {
-		return &Error{
+		return &TiError{
 			msg:  "expected `error_msg` of type `string`",
 			code: UnpackError,
 		}
@@ -107,20 +104,20 @@ func NewErrorFromByte(b []byte) *Error {
 
 	errCode, ok := errMap["error_code"].(int8)
 	if !ok {
-		return &Error{
+		return &TiError{
 			msg:  "expected `error_code` of type `int8`",
 			code: UnpackError,
 		}
 	}
 
-	return &Error{
+	return &TiError{
 		msg:  msg,
 		code: ErrorCode(errCode),
 	}
 }
 
 // Error returns the error msg.
-func (e *Error) Error() string { return e.msg }
+func (e *TiError) Error() string { return e.msg }
 
 // Code returns the error type.
-func (e *Error) Code() ErrorCode { return e.code }
+func (e *TiError) Code() ErrorCode { return e.code }

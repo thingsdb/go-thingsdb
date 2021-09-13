@@ -9,50 +9,125 @@ import (
 	"sync"
 	"time"
 
-	"github.com/vmihailenco/msgpack/v4"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
-const defaultPingInterval = 30
+const defaultPingInterval = 30 * time.Second
+const pingTimout = 5 * time.Second
+const authTimeout = 10 * time.Second
+const maxReconnectSleep = time.Minute
+
+type LogLevelType int8
+
+const (
+	// Debug for debug logging
+	LogDebug LogLevelType = 0
+	// Info level
+	LogInfo LogLevelType = 1
+	// Warning level
+	LogWarning LogLevelType = 2
+	// Error level
+	LogError LogLevelType = 3
+)
 
 // Conn is a ThingsDB connection to a single node.
 type Conn struct {
-	host           string
-	port           uint16
-	pid            uint16
-	buf            *buffer
-	respMap        map[uint16]chan *pkg
-	ssl            *tls.Config
-	mux            sync.Mutex
-	OnClose        func(error)
-	EventCh        chan *Event
-	LogCh          chan string
+	// Private
+	nodes    []node
+	nodeIdx  int
+	pid      uint16
+	token    *string
+	username *string
+	password *string
+	buf      *buffer
+	respMap  map[uint16]chan *pkg
+	config   *tls.Config
+	mux      sync.Mutex
+	rooms    *roomStore
+
+	// Public
+	DefaultTimeout time.Duration
+	AutoReconnect  bool
 	PingInterval   time.Duration
-	keepAliveMux   sync.Mutex
-	isKeepingAlive bool
+	LogCh          chan string
+	LogLevel       LogLevelType
+	OnNodeStatus   func(ns *NodeStatus)
+	OnWarning      func(we *WarnEvent)
 }
 
-// NewConn creates a new connection
-func NewConn(host string, port uint16, ssl *tls.Config) *Conn {
+// NewConn creates a new ThingsDB Connector.
+//
+// Example:
+//
+//     thingsdb.NewConn("localhost", 9200, nil)
+//
+// Or, with TLS (SSL) config enabled
+//
+//     config := &tls.Config{
+//         InsecureSkipVerify: false,
+//     }
+//     thingsdb.NewConn("localhost", 9200, config)
+//
+func NewConn(host string, port uint16, config *tls.Config) *Conn {
 	return &Conn{
-		host:         host,
-		port:         port,
-		pid:          0,
-		buf:          newBuffer(),
-		respMap:      make(map[uint16]chan *pkg),
-		ssl:          ssl,
-		OnClose:      nil,
-		EventCh:      nil,
-		LogCh:        nil,
-		PingInterval: defaultPingInterval,
+		// Private
+		nodes:    []node{{host: host, port: port}},
+		nodeIdx:  0,
+		pid:      0,
+		token:    nil,
+		username: nil,
+		password: nil,
+		buf:      newBuffer(),
+		respMap:  make(map[uint16]chan *pkg),
+		config:   config,
+		mux:      sync.Mutex{},
+		rooms:    newRoomStore(),
+
+		// Public
+		DefaultTimeout: 0,
+		AutoReconnect:  true,
+		PingInterval:   defaultPingInterval,
+		LogCh:          nil,
+		LogLevel:       LogWarning,
+		OnNodeStatus:   nil,
+		OnWarning:      nil,
 	}
 }
 
-// ToString returns a string representing the connection and port.
+// AddNone adds another node to the connector.
+
+// The connection will switch between
+// available nodes when a re-connect is triggered. This ensures that the connection
+// will be available very quickly after a ThingsDB node is restarted.
+//
+// TLS configuration will be shared between all nodes. Thus, it is not possible to
+// enable TLS config (or a different) for a single node.
+//
+// > Note: It is useless to add another node when using only a single ThingsDB
+// node, or when using a single thingsdb service, for example in Kubernetes.
+//
+// Example:
+//
+//     conn := thingsdb.NewConn("node1.local", 9200, nil)
+//     conn.AddNode("node2.local", 9200)
+//     conn.AddNode("node3.local", 9200)
+//
+func (conn *Conn) AddNode(host string, port uint16) {
+	conn.nodes = append(conn.nodes, node{host: host, port: port})
+}
+
+// ToString prints the current node address used by the connection.
+//
+// Example:
+//
+//     thingsdb.NewConn("localhost", 9200, nil).ToString()  // "localhost:9200"
+//
 func (conn *Conn) ToString() string {
-	if strings.Count(conn.host, ":") > 0 {
-		return fmt.Sprintf("[%s]:%d", conn.host, conn.port)
+	node := conn.node()
+	if strings.Count(node.host, ":") > 0 {
+		return fmt.Sprintf("[%s]:%d", node.host, node.port)
 	}
-	return fmt.Sprintf("%s:%d", conn.host, conn.port)
+	return fmt.Sprintf("%s:%d", node.host, node.port)
 }
 
 // Connect creates the TCP connection to the node.
@@ -61,19 +136,202 @@ func (conn *Conn) Connect() error {
 		return nil
 	}
 
-	if conn.ssl == nil {
+	if conn.AutoReconnect {
+		conn.nodeIdx = -1 // forces to start using node Id 0
+		conn.reconnectLoop()
+	} else {
+		err := conn.connect()
+		if err != nil {
+			return err
+		}
+	}
+
+	if conn.PingInterval > 0 {
+		go conn.ping()
+	}
+
+	return nil
+}
+
+// AuthPassword can be used to authenticate a connection using a username and password.
+func (conn *Conn) AuthPassword(username, password string) error {
+	conn.username = &username
+	conn.password = &password
+	conn.token = nil
+	_, err := conn.write(ProtoReqAuth, []string{*conn.username, *conn.password}, authTimeout)
+	return err
+}
+
+// AuthToken can be used to authenticate a connection using a token.
+func (conn *Conn) AuthToken(token string) error {
+	conn.username = nil
+	conn.password = nil
+	conn.token = &token
+	_, err := conn.write(ProtoReqAuth, *conn.token, authTimeout)
+	return err
+}
+
+// IsConnected returns `true` when the connector is connected to ThingsDB, `false` if not.
+//
+// > Note: this function does not care is the connection is authenticated
+func (conn *Conn) IsConnected() bool {
+	conn.mux.Lock()
+	connected := conn.buf.conn != nil
+	conn.mux.Unlock()
+
+	return connected
+}
+
+// Query ThingsDB using code.
+//
+// Example:
+//
+//     if res, err := conn.Query("/t", "'Hello Go Connector for ThingsDB!!';", nil); err == nil {
+//         fmt.Println(res)  // "Hello Go Connector for ThingsDB!!"
+//     }
+//
+// Arguments can be provided using a `map[string]interface{}`, for example:
+//
+//     args := map[string]interface{}{
+//         "name": "Alice",
+//     }
+//
+//     if res, err := conn.Query("/t", "`Hello {name}!!`;", args); err == nil {
+//         fmt.Println(res) // "Hello Alice!!"
+//     }
+//
+func (conn *Conn) Query(scope string, code string, vars map[string]interface{}) (interface{}, error) {
+	data := []interface{}{scope, code}
+	if vars != nil {
+		data = append(data, vars)
+	}
+
+	return conn.ensure_write(ProtoReqQuery, data)
+}
+
+// Run a procedure in ThingsDB. Arguments are optional and may be either positional `[]interface{}` or by map `map[string]interface{}`.
+//
+// Example without arguments:
+//
+//     // Suppose collection `stuff` has the following procedure:
+//     // new_procedure('greet', || 'Hi');
+//
+//     if res, err := conn.Run("//stuff", "greet", nil); err == nil {
+//         fmt.Println(res)  // "Hi"
+//     }
+//
+// Example using positional arguments:
+//
+//     // Suppose collection `stuff` has the following procedure:
+//     // new_procedure('subtract', |a, b| a - b);
+//
+//     args := []interface{}{40, 10}
+//
+//     if res, err := conn.Run("//stuff", "subtract", args); err == nil {
+//         fmt.Println(res)  // 30
+//     }
+//
+// Example using mapped arguments:
+//
+//     // Suppose collection `stuff` has the following procedure:
+//     // new_procedure('subtract', |a, b| a - b);
+//
+//     args := map[string]interface{}{
+//         "a": 15,
+//         "b": 5,
+//     }
+//     if res, err := conn.Run("//stuff", "subtract", args); err == nil {
+//         fmt.Println(res)  // 10
+//     }
+// ```
+func (conn *Conn) Run(scope string, procedure string, args interface{}) (interface{}, error) {
+	data := []interface{}{scope, procedure}
+	if args != nil {
+		data = append(data, args)
+	}
+
+	return conn.ensure_write(ProtoReqRun, data)
+}
+
+// Emit an even to a room.
+//
+// If a `Room` is created for the given `roomId`, you probable want to
+// use Emit(..) on the `Room` type.
+//
+// Example:
+//
+//     args := []interface{}{"This is a message"}
+//
+//     err := conn.Emit(
+//         "//stuff",      // scope of the Room
+//         123,            // Room Id
+//         "new-message",  // Event to emit
+//         args            // Arguments (may be nil)
+//     );
+//
+func (conn *Conn) Emit(scope string, roomId uint64, event string, args []interface{}) error {
+	data := []interface{}{scope, roomId, event}
+	if args != nil {
+		data = append(data, args...)
+	}
+
+	_, err := conn.ensure_write(ProtoReqEmit, data)
+	return err
+}
+
+// Close an open connection.
+//
+// > Warning: After calling Close(), the `conn.AutoReconnect` property will be
+// set to `false`. Thus, if you later want to `Connect()` again, make
+// sure to re-enable this property manually.
+func (conn *Conn) Close() {
+	conn.mux.Lock()
+
+	// Disable auto reconnect
+	conn.AutoReconnect = false
+
+	if conn.buf.conn != nil {
+		node := conn.node()
+		conn.logWarning("Closing connection to %s:%d", node.host, node.port)
+		conn.buf.conn.Close()
+	}
+	conn.mux.Unlock()
+}
+
+func (conn *Conn) node() *node {
+	return &conn.nodes[conn.nodeIdx]
+}
+
+func (conn *Conn) auth() error {
+
+	if conn.token != nil {
+		_, err := conn.ensure_write(ProtoReqAuth, *conn.token)
+		return err
+	}
+
+	if conn.username != nil && conn.password != nil {
+		_, err := conn.ensure_write(ProtoReqAuth, []string{*conn.username, *conn.password})
+		return err
+	}
+
+	return fmt.Errorf("No authentication method available")
+}
+
+func (conn *Conn) connect() error {
+	node := conn.node()
+	if conn.config == nil {
 		cn, err := net.Dial("tcp", conn.ToString())
 		if err != nil {
 			return err
 		}
-		conn.writeLog("connected to %s:%d", conn.host, conn.port)
+		conn.logInfo("Connected to %s:%d", node.host, node.port)
 		conn.buf.conn = cn
 	} else {
-		cn, err := tls.Dial("tcp", conn.ToString(), conn.ssl)
+		cn, err := tls.Dial("tcp", conn.ToString(), conn.config)
 		if err != nil {
 			return err
 		}
-		conn.writeLog("connected to %s:%d using a secure connection", conn.host, conn.port)
+		conn.logInfo("Connected to %s:%d using a secure connection", node.host, node.port)
 		conn.buf.conn = cn
 	}
 
@@ -83,98 +341,35 @@ func (conn *Conn) Connect() error {
 	return nil
 }
 
-// AuthPassword can be used to authenticate a connection using a username and
-// password.
-func (conn *Conn) AuthPassword(username, password string) error {
-	_, err := conn.write(
-		ProtoReqAuth,
-		[]string{username, password},
-		10)
+func (conn *Conn) joinOrLeave(proto Proto, scope string, ids []*uint64) error {
+	data := make([]interface{}, 1+len(ids))
+	data[0] = scope
+	for i, v := range ids {
+		data[1+i] = v
+	}
+	res, err := conn.ensure_write(proto, data)
+
+	if err == nil {
+		arr, ok := res.([]interface{})
+		if !ok {
+			return fmt.Errorf("unexpected Join response: %v", res)
+		}
+		for i, val := range arr {
+			switch val.(type) {
+			case nil:
+				ids[i] = nil
+			}
+		}
+	}
 	return err
 }
 
-// AuthToken can be used to authenticate a connection using a token.
-func (conn *Conn) AuthToken(token string) error {
-	_, err := conn.write(
-		ProtoReqAuth,
-		token,
-		10)
-	return err
+func (conn *Conn) join(scope string, ids []*uint64) error {
+	return conn.joinOrLeave(ProtoReqJoin, scope, ids)
 }
 
-// IsConnected returns true when connected.
-func (conn *Conn) IsConnected() bool {
-	return conn.buf.conn != nil
-}
-
-// Query sends a query and returns the result.
-func (conn *Conn) Query(scope string, query string, arguments map[string]interface{}, timeout uint16) (interface{}, error) {
-	n := 3
-	if arguments == nil {
-		n = 2
-	}
-	data := make([]interface{}, n)
-	data[0] = scope
-	data[1] = query
-	if arguments != nil {
-		data[2] = arguments
-	}
-
-	return conn.write(ProtoReqQuery, data, timeout)
-}
-
-// Watch for changes on given things.
-func (conn *Conn) Watch(scope string, ids []uint64, timeout uint16) (interface{}, error) {
-	data := make([]interface{}, 1)
-	data[0] = scope
-	for _, v := range ids {
-		data = append(data, v)
-	}
-	return conn.write(ProtoReqWatch, data, timeout)
-}
-
-// Unwatch for changes on given things.
-func (conn *Conn) Unwatch(scope string, ids []uint64, timeout uint16) (interface{}, error) {
-	data := make([]interface{}, 1)
-	data[0] = scope
-	for _, v := range ids {
-		data = append(data, v)
-	}
-	return conn.write(ProtoReqUnwatch, data, timeout)
-}
-
-// Run can be used to run a stored procedure in a scope
-func (conn *Conn) Run(procedure string, args interface{}, scope string, timeout uint16) (interface{}, error) {
-	if len(procedure) == 0 {
-		return nil, fmt.Errorf("No procedure given")
-	}
-	if len(scope) == 0 {
-		return nil, fmt.Errorf("No scope given")
-	}
-	data := make([]interface{}, 3)
-	data[0] = scope
-	data[1] = procedure
-	data[2] = args
-
-	return conn.write(ProtoReqRun, data, timeout)
-}
-
-// EnableKeepAlive Keep connection alive using the ping-pong protocol of ThingsDB
-func (conn *Conn) EnableKeepAlive() {
-	conn.keepAliveMux.Lock()
-	if !conn.isKeepingAlive {
-		conn.isKeepingAlive = true
-		go conn.ping()
-	}
-	conn.keepAliveMux.Unlock()
-}
-
-// Close will close an open connection.
-func (conn *Conn) Close() {
-	if conn.buf.conn != nil {
-		conn.writeLog("closing connection to %s:%d", conn.host, conn.port)
-		conn.buf.conn.Close()
-	}
+func (conn *Conn) leave(scope string, ids []*uint64) error {
+	return conn.joinOrLeave(ProtoReqLeave, scope, ids)
 }
 
 func getResult(respCh chan *pkg, timeoutCh chan bool) (interface{}, error) {
@@ -183,24 +378,28 @@ func getResult(respCh chan *pkg, timeoutCh chan bool) (interface{}, error) {
 
 	select {
 	case pkg := <-respCh:
-		switch Proto(pkg.tp) {
-		case ProtoResData:
-			err = msgpack.Unmarshal(pkg.data, &result)
-		case ProtoResPong, ProtoResOk:
-			result = nil
-		case ProtoResError:
-			err = NewErrorFromByte(pkg.data)
-		default:
-			err = fmt.Errorf("unknown package type: %d", pkg.tp)
+		if pkg == nil {
+			err = NewTiError("request is cancelled", RequestCancelError)
+		} else {
+			switch Proto(pkg.tp) {
+			case ProtoResData:
+				err = msgpack.Unmarshal(pkg.data, &result)
+			case ProtoResPong, ProtoResOk:
+				result = nil
+			case ProtoResError:
+				err = NewTiErrorFromByte(pkg.data)
+			default:
+				err = fmt.Errorf("unknown package type: %d", pkg.tp)
+			}
 		}
 	case <-timeoutCh:
-		err = fmt.Errorf("query timeout reached")
+		err = NewTiError("request timeout reached", RequestTimeoutError)
 	}
 
 	return result, err
 }
 
-func (conn *Conn) increPid() uint16 {
+func (conn *Conn) nextPid() uint16 {
 	conn.mux.Lock()
 	pid := conn.pid
 	conn.pid++
@@ -208,22 +407,23 @@ func (conn *Conn) increPid() uint16 {
 	return pid
 }
 
-func (conn *Conn) getRespCh(pid uint16, b []byte, timeout uint16) (interface{}, error) {
+func (conn *Conn) getRespCh(pid uint16, b []byte, timeout time.Duration) (interface{}, error) {
 	respCh := make(chan *pkg, 1)
 
 	conn.mux.Lock()
 	conn.respMap[pid] = respCh
-	conn.mux.Unlock()
 
 	if conn.buf.conn != nil {
 		conn.buf.conn.Write(b)
 	}
 
+	conn.mux.Unlock()
+
 	timeoutCh := make(chan bool, 1)
 
-	if timeout != 0 {
+	if timeout > 0 {
 		go func() {
-			time.Sleep(time.Duration(timeout) * time.Second)
+			time.Sleep(timeout)
 			timeoutCh <- true
 		}()
 	}
@@ -237,11 +437,49 @@ func (conn *Conn) getRespCh(pid uint16, b []byte, timeout uint16) (interface{}, 
 	return result, err
 }
 
-func (conn *Conn) write(tp Proto, data interface{}, timeout uint16) (interface{}, error) {
+func (conn *Conn) ensure_write(tp Proto, data interface{}) (interface{}, error) {
+
+	pid := conn.nextPid()
+	b, err := pkgPack(pid, tp, data)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for ok := true; ok; ok = conn.AutoReconnect {
+		if !conn.IsConnected() {
+			conn.logInfo("Wait for a connection...")
+			time.Sleep(time.Second)
+			continue
+		}
+
+		res, err := conn.getRespCh(pid, b, conn.DefaultTimeout)
+		if err == nil {
+			return res, err
+		}
+
+		if terr, ok := err.(*TiError); ok {
+			switch terr.Code() {
+			case RequestTimeoutError, NodeError, RequestCancelError, AuthError:
+				conn.logError("Err: %s (%d)", terr.Error(), terr.Code())
+				time.Sleep(time.Second)
+				continue
+			}
+		}
+
+		return res, err
+	}
+
+	return nil, fmt.Errorf("not connected")
+
+}
+
+func (conn *Conn) write(tp Proto, data interface{}, timeout time.Duration) (interface{}, error) {
 	if !conn.IsConnected() {
 		return nil, fmt.Errorf("not connected")
 	}
-	pid := conn.increPid()
+
+	pid := conn.nextPid()
 	b, err := pkgPack(pid, tp, data)
 
 	if err != nil {
@@ -251,14 +489,65 @@ func (conn *Conn) write(tp Proto, data interface{}, timeout uint16) (interface{}
 	return conn.getRespCh(pid, b, timeout)
 }
 
+func (conn *Conn) closeAndReconnect(s string, a ...interface{}) {
+	conn.mux.Lock()
+	if conn.buf.conn != nil {
+		conn.logWarning(s, a...)
+
+		for _, channel := range conn.respMap {
+			channel <- nil
+		}
+
+		prev := conn.buf.conn
+		conn.buf.conn = nil
+		prev.Close()
+
+		if conn.AutoReconnect {
+			conn.logInfo("Try to reconnect...")
+			go conn.reconnectLoop()
+		}
+	}
+	conn.mux.Unlock()
+}
+
 func (conn *Conn) listen() {
 	for {
 		select {
 		case pkg := <-conn.buf.evCh:
-			ev, err := newEvent(pkg)
-			if err == nil {
-				conn.EventCh <- ev
+			switch Proto(pkg.tp) {
+			case ProtoOnNodeStatus:
+				nodeStatus, err := newNodeStatus(pkg)
+				if err == nil {
+					if conn.OnNodeStatus != nil {
+						conn.OnNodeStatus(nodeStatus)
+					}
+
+					if nodeStatus.Status == "SHUTTING_DOWN" {
+						conn.closeAndReconnect("Node %d is shutting down... (%s)", nodeStatus.Id, conn.ToString())
+					} else {
+						conn.logInfo("Node %d has a new status: %v", nodeStatus.Id, nodeStatus.Status)
+					}
+				}
+			case ProtoOnWarn:
+				warnEvent, err := newWarnEvent(pkg)
+				if err == nil {
+					if conn.OnWarning == nil {
+						conn.logWarning("Warning from ThingsDB: %s (%d)", warnEvent.Msg, warnEvent.Code)
+					} else {
+						conn.OnWarning(warnEvent)
+					}
+				}
+			case ProtoOnRoomDelete, ProtoOnRoomEvent, ProtoOnRoomJoin, ProtoOnRoomLeave:
+				ev, err := newRoomEvent(pkg)
+				if err == nil {
+					if room, ok := conn.rooms.getRoom(ev.Id); ok {
+						room.onEvent(ev)
+					} else {
+						conn.logInfo("Room Id %d is not registered on this connection", ev.Id)
+					}
+				}
 			}
+
 		case pkg := <-conn.buf.pkgCh:
 			conn.mux.Lock()
 			if respCh, ok := conn.respMap[pkg.pid]; ok {
@@ -266,20 +555,45 @@ func (conn *Conn) listen() {
 				respCh <- pkg
 			} else {
 				conn.mux.Unlock()
-				conn.writeLog("no response channel found for pid %d, probably the task has been cancelled ot timed out.", pkg.pid)
+				conn.logError("No response channel found for pid %d, probably the task has been cancelled ot timed out.", pkg.pid)
 			}
 		case err := <-conn.buf.errCh:
-			conn.writeLog("%s (%s:%d)", niceErr(err), conn.host, conn.port)
-			conn.buf.conn.Close()
-			conn.buf.conn = nil
-			if conn.OnClose != nil {
-				conn.OnClose(err)
-			}
+			conn.closeAndReconnect("Err: %s (%s)", niceErr(err), conn.ToString())
 		}
 	}
 }
 
-func (conn *Conn) writeLog(s string, a ...interface{}) {
+func (conn *Conn) reconnectLoop() {
+	sleep := time.Second
+	for {
+		conn.nodeIdx += 1
+		conn.nodeIdx %= len(conn.nodes)
+
+		if err := conn.connect(); err == nil {
+			// Authenticate the connection
+			conn.auth()
+
+			// Re-join all the rooms
+			roomMap := conn.rooms.getRoomMap()
+			for scope, roomIds := range roomMap {
+				conn.join(scope, roomIds)
+			}
+			break
+		}
+
+		conn.logInfo("Try to reconnect in %d second(s)...", sleep/time.Second)
+
+		time.Sleep(sleep)
+
+		sleep *= 2
+
+		if sleep > maxReconnectSleep {
+			sleep = maxReconnectSleep
+		}
+	}
+}
+
+func (conn *Conn) _writeLog(s string, a ...interface{}) {
 	msg := fmt.Sprintf(s, a...)
 	if conn.LogCh == nil {
 		log.Println(msg)
@@ -288,21 +602,42 @@ func (conn *Conn) writeLog(s string, a ...interface{}) {
 	}
 }
 
+func (conn *Conn) logDebug(s string, a ...interface{}) {
+	if conn.LogLevel == LogDebug {
+		conn._writeLog("[D] "+s, a...)
+	}
+}
+
+func (conn *Conn) logInfo(s string, a ...interface{}) {
+	if conn.LogLevel <= LogInfo {
+		conn._writeLog("[I] "+s, a...)
+	}
+}
+
+func (conn *Conn) logWarning(s string, a ...interface{}) {
+	if conn.LogLevel <= LogWarning {
+		conn._writeLog("[W] "+s, a...)
+	}
+}
+
+func (conn *Conn) logError(s string, a ...interface{}) {
+	if conn.LogLevel <= LogError {
+		conn._writeLog("[E] "+s, a...)
+	}
+}
+
 func (conn *Conn) ping() {
 	for {
-		time.Sleep(conn.PingInterval * time.Second)
-		if conn.IsConnected() {
-			_, err := conn.write(ProtoReqPing, nil, 5)
-			if err != nil {
-				conn.writeLog("ping failed: %s", err)
+		time.Sleep(conn.PingInterval)
 
+		if conn.IsConnected() {
+			_, err := conn.write(ProtoReqPing, nil, pingTimout)
+			if err != nil {
+				conn.logError("Ping failed: %s", err)
 			} else {
-				conn.writeLog("ping! (%s:%d)", conn.host, conn.port)
+				conn.logInfo("Ping! (%s)", conn.ToString())
 			}
-		} else {
-			conn.keepAliveMux.Lock()
-			conn.isKeepingAlive = false
-			conn.keepAliveMux.Unlock()
+		} else if !conn.AutoReconnect {
 			break
 		}
 	}

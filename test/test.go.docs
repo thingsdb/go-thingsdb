@@ -1,0 +1,57 @@
+package main
+
+import (
+	"crypto/tls"
+	"fmt"
+
+	thingsdb "github.com/thingsdb/go-thingsdb"
+)
+
+func example(conn *thingsdb.Conn, res chan interface{}) {
+	if err := conn.Connect(); err != nil {
+		res <- err
+		return
+	}
+
+	// Close the connection at the end of this function
+	defer conn.Close()
+
+	if err := conn.AuthToken("Fai6NmH7QYxA6WLYPdtgcy"); err != nil {
+		res <- err
+		return
+	}
+
+	data, err := conn.Query(
+		"//Doc",                // Scope
+		".greetings.choice();", // ThingsDB code
+		nil,                    // Arguments, may be a map[string]interface{}
+	)
+
+	if err == nil {
+		res <- data
+	} else {
+		res <- err
+	}
+}
+
+func main() {
+	// Only required for a secure connection
+	conf := &tls.Config{
+		InsecureSkipVerify: false,
+	}
+
+	// In this example we will use a channel to read the example response
+	res := make(chan interface{})
+
+	// Create a new ThingsDB connection
+	conn := thingsdb.NewConn("playground.thingsdb.net", 9400, conf)
+
+	// Start our example
+	go example(conn, res)
+
+	// Wait for the response
+	data := <-res
+
+	// Print the response (or error)
+	fmt.Printf("%v\n", data)
+}

@@ -12,20 +12,20 @@ const (
 	// ProtoOnNodeStatus the connected node has changed it's status
 	ProtoOnNodeStatus Proto = 0
 
-	// ProtoOnWatchIni initial data for a `thing`
-	ProtoOnWatchIni Proto = 1
-
-	// ProtoOnWatchUpd initial update data for a `thing`
-	ProtoOnWatchUpd Proto = 2
-
-	// ProtoOnWatchDel `thing` is removed from ThingsDB
-	ProtoOnWatchDel Proto = 3
-
-	// ProtoOnWatchStop stopped watching a `thing`
-	ProtoOnWatchStop Proto = 4
-
 	// ProtoOnWarn warning message for the connected client
 	ProtoOnWarn Proto = 5
+
+	// ProtoOnRoomJoin initial join
+	ProtoOnRoomJoin Proto = 6
+
+	// ProtoOnRoomLeave leave join
+	ProtoOnRoomLeave Proto = 7
+
+	// ProtoOnRoomEvent emit event
+	ProtoOnRoomEvent Proto = 8
+
+	// ProtoOnRoomDelete room removed from ThingsDB
+	ProtoOnRoomDelete Proto = 9
 
 	/*
 	 * Responses
@@ -48,12 +48,14 @@ const (
 	ProtoReqPing Proto = 32
 	// ProtoReqAuth requires `[username, password]`
 	ProtoReqAuth Proto = 33
-	// ProtoReqQuery requires `[scope, query [, arguments]]`
+	// ProtoReqQuery requires `[scope, query [, variable]]`
 	ProtoReqQuery Proto = 34
-	// ProtoReqWatch requires `[scope, thing id's....]`
-	ProtoReqWatch Proto = 35
-	// ProtoReqUnwatch requires `[scope, thing id's....]`
-	ProtoReqUnwatch Proto = 36
-	// ProtoReqRun requires `[scope, procedure, arguments....]`
+	// ProtoReqRun requires `[scope, procedure[, arguments]]`
 	ProtoReqRun Proto = 37
+	// ProtoReqJoin requires `[scope, room ids...]`
+	ProtoReqJoin Proto = 38
+	// ProtoReqLeave requires `[scope, room ids...]`
+	ProtoReqLeave Proto = 39
+	// ProtoReqEmit requires `[scope, roomId, event, arguments...]`
+	ProtoReqEmit Proto = 40
 )
