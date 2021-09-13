@@ -24,7 +24,7 @@ func example(conn *thingsdb.Conn, res chan interface{}) {
 	data, err := conn.Query(
 		"//Doc",                // Scope
 		".greetings.choice();", // ThingsDB code
-		nil,                    // Arguments, may be a map[string]interface{}
+		nil,                    // Variable, may be a map[string]interface{}
 	)
 
 	if err == nil {

@@ -192,11 +192,11 @@ func (conn *Conn) IsConnected() bool {
 //
 // Arguments can be provided using a `map[string]interface{}`, for example:
 //
-//     args := map[string]interface{}{
+//     vars := map[string]interface{}{
 //         "name": "Alice",
 //     }
 //
-//     if res, err := conn.Query("/t", "`Hello {name}!!`;", args); err == nil {
+//     if res, err := conn.Query("/t", "`Hello {name}!!`;", vars); err == nil {
 //         fmt.Println(res) // "Hello Alice!!"
 //     }
 //

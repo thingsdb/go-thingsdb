@@ -73,14 +73,14 @@ func example(conn *thingsdb.Conn, ok chan bool) {
 		return
 	}
 
-	// Arguments are optional, if no arguments are required, args may be `nil`
-	args := map[string]interface{}{
+	// Arguments are optional, if no arguments are required, vars may be `nil`
+	vars := map[string]interface{}{
 		"a": 6,
 		"b": 7,
 	}
 
 	// Just some example query using collection `stuff`
-	if res, err := conn.Query("//stuff", "a * b;", args); err == nil {
+	if res, err := conn.Query("//stuff", "a * b;", vars); err == nil {
 		fmt.Println(res) // Should print 42, as 6 * 7 = 42
 	} else {
 		fmt.Println(err)
@@ -213,11 +213,11 @@ if res, err := conn.Query("/t", "'Hello Go Connector for ThingsDB!!';", nil); er
 Arguments can be provided using a `map[string]interface{}`, for example:
 
 ```go
-args := map[string]interface{}{
+vars := map[string]interface{}{
     "name": "Alice",
 }
 
-if res, err := conn.Query("/t", "`Hello {name}!!`;", args); err == nil {
+if res, err := conn.Query("/t", "`Hello {name}!!`;", vars); err == nil {
     fmt.Println(res) // "Hello Alice!!"
 }
 ```
@@ -259,11 +259,11 @@ if res, err := conn.Run("//stuff", "subtract", args); err == nil {
 //
 //   new_procedure('subtract', |a, b| a - b);
 //
-args := map[string]interface{}{
+vars := map[string]interface{}{
     "a": 15,
     "b": 5,
 }
-if res, err := conn.Run("//stuff", "subtract", args); err == nil {
+if res, err := conn.Run("//stuff", "subtract", vars); err == nil {
     fmt.Println(res)  // 10
 }
 ```
