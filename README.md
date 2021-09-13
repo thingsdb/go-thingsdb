@@ -34,6 +34,8 @@
 
 Simple install the package to your [$GOPATH](https://github.com/golang/go/wiki/GOPATH) with the [go tool](https://golang.org/cmd/go/) from shell:
 
+> At least Go version 1.12 is required.
+
 ```shell
 $ go get github.com/thingsdb/go-thingsdb
 ```
