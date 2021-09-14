@@ -1,7 +1,0 @@
-language: go
-
-# At least Go version 1.12 is required. Besided the `oldest` supported version,
-# also test the latest using `master`.
-go:
-- 1.12.x
-- master
