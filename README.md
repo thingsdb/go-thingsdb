@@ -1,3 +1,7 @@
+[![CI](https://github.com/thingsdb/go-thingsdb/workflows/CI/badge.svg)](https://github.com/thingsdb/go-thingsdb/actions)
+[![Release Version](https://img.shields.io/github/release/thingsdb/go-thingsdb)](https://github.com/thingsdb/go-thingsdb/releases)
+
+
 # Go connector for ThingsDB
 
 ![Go ThingsDB](assets/go-thingsdb.png?raw=true "Go ThingsDB!!")
