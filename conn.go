@@ -206,7 +206,7 @@ func (conn *Conn) Query(scope string, code string, vars map[string]interface{}) 
 		data = append(data, vars)
 	}
 
-	return conn.ensure_write(ProtoReqQuery, data)
+	return conn.ensureWrite(ProtoReqQuery, data)
 }
 
 // Run a procedure in ThingsDB. Arguments are optional and may be either positional `[]interface{}` or by map `map[string]interface{}`.
@@ -250,7 +250,7 @@ func (conn *Conn) Run(scope string, procedure string, args interface{}) (interfa
 		data = append(data, args)
 	}
 
-	return conn.ensure_write(ProtoReqRun, data)
+	return conn.ensureWrite(ProtoReqRun, data)
 }
 
 // Emit an even to a room.
@@ -275,7 +275,7 @@ func (conn *Conn) Emit(scope string, roomId uint64, event string, args []interfa
 		data = append(data, args...)
 	}
 
-	_, err := conn.ensure_write(ProtoReqEmit, data)
+	_, err := conn.ensureWrite(ProtoReqEmit, data)
 	return err
 }
 
@@ -305,12 +305,12 @@ func (conn *Conn) node() *node {
 func (conn *Conn) auth() error {
 
 	if conn.token != nil {
-		_, err := conn.ensure_write(ProtoReqAuth, *conn.token)
+		_, err := conn.ensureWrite(ProtoReqAuth, *conn.token)
 		return err
 	}
 
 	if conn.username != nil && conn.password != nil {
-		_, err := conn.ensure_write(ProtoReqAuth, []string{*conn.username, *conn.password})
+		_, err := conn.ensureWrite(ProtoReqAuth, []string{*conn.username, *conn.password})
 		return err
 	}
 
@@ -347,7 +347,7 @@ func (conn *Conn) joinOrLeave(proto Proto, scope string, ids []*uint64) error {
 	for i, v := range ids {
 		data[1+i] = v
 	}
-	res, err := conn.ensure_write(proto, data)
+	res, err := conn.ensureWrite(proto, data)
 
 	if err == nil {
 		arr, ok := res.([]interface{})
@@ -437,7 +437,7 @@ func (conn *Conn) getRespCh(pid uint16, b []byte, timeout time.Duration) (interf
 	return result, err
 }
 
-func (conn *Conn) ensure_write(tp Proto, data interface{}) (interface{}, error) {
+func (conn *Conn) ensureWrite(tp Proto, data interface{}) (interface{}, error) {
 
 	pid := conn.nextPid()
 	b, err := pkgPack(pid, tp, data)
@@ -532,7 +532,7 @@ func (conn *Conn) listen() {
 				warnEvent, err := newWarnEvent(pkg)
 				if err == nil {
 					if conn.OnWarning == nil {
-						conn.logWarning("Warning from ThingsDB: %s (%d)", warnEvent.Msg, warnEvent.Code)
+						conn.logWarning("ThingsDB: %s (%d)", warnEvent.Msg, warnEvent.Code)
 					} else {
 						conn.OnWarning(warnEvent)
 					}
