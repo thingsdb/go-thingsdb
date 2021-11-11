@@ -146,11 +146,9 @@ func (room *Room) Join(conn *Conn, wait time.Duration) error {
 		}()
 
 		for {
-			select {
-			case err := <-room.waitJoin:
-				room.waitJoin = nil
-				return err
-			}
+			err := <-room.waitJoin
+			room.waitJoin = nil
+			return err
 		}
 	}
 
@@ -218,25 +216,18 @@ func (room *Room) join(conn *Conn) error {
 
 		var roomId uint64
 
-		switch val.(type) {
+		switch val := val.(type) {
 		case int:
-			roomId = uint64(val.(int))
 		case int8:
-			roomId = uint64(val.(int8))
 		case int16:
-			roomId = uint64(val.(int16))
 		case int32:
-			roomId = uint64(val.(int32))
 		case int64:
-			roomId = uint64(val.(int64))
 		case uint8:
-			roomId = uint64(val.(uint8))
 		case uint16:
-			roomId = uint64(val.(uint16))
 		case uint32:
-			roomId = uint64(val.(uint32))
+			roomId = uint64(val)
 		case uint64:
-			roomId = val.(uint64)
+			roomId = val
 		default:
 			return fmt.Errorf("Expecting code `%s` to return with a room Id (type integer), bot got: %v", *room.code, val)
 		}

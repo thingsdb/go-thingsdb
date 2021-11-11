@@ -11,7 +11,7 @@ import (
 const pkgHeaderSize = 8
 
 // PkgInitCapacity will be used as default capacity when allocating for a package.
-const pkgInitCapacity = 8192
+const PkgInitCapacity = 8192
 
 // pkg contains of a header and data.
 type pkg struct {

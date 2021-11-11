@@ -62,7 +62,7 @@ func (buf buffer) read() {
 			buf.pkg.setData(&buf.data, total)
 
 			// The reserved ThingsDB events range is between 0..15
-			if buf.pkg.tp >= 0 && buf.pkg.tp <= 15 {
+			if buf.pkg.tp <= 15 {
 				buf.evCh <- buf.pkg
 			} else {
 				buf.pkgCh <- buf.pkg

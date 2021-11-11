@@ -408,16 +408,21 @@ func (conn *Conn) nextPid() uint16 {
 }
 
 func (conn *Conn) getRespCh(pid uint16, b []byte, timeout time.Duration) (interface{}, error) {
+	var err error
 	respCh := make(chan *pkg, 1)
 
 	conn.mux.Lock()
 	conn.respMap[pid] = respCh
 
 	if conn.buf.conn != nil {
-		conn.buf.conn.Write(b)
+		_, err = conn.buf.conn.Write(b)
 	}
 
 	conn.mux.Unlock()
+
+	if err != nil {
+		return nil, err
+	}
 
 	timeoutCh := make(chan bool, 1)
 
@@ -571,12 +576,16 @@ func (conn *Conn) reconnectLoop() {
 
 		if err := conn.connect(); err == nil {
 			// Authenticate the connection
-			conn.auth()
-
-			// Re-join all the rooms
-			roomMap := conn.rooms.getRoomMap()
-			for scope, roomIds := range roomMap {
-				conn.join(scope, roomIds)
+			if conn.auth() != nil {
+				// Re-join all the rooms
+				roomMap := conn.rooms.getRoomMap()
+				for scope, roomIds := range roomMap {
+					if err := conn.join(scope, roomIds); err != nil {
+						conn.logWarning("Unable to re-join all rooms: %v", err)
+					}
+				}
+			} else {
+				conn.logError("Authentication has failed")
 			}
 			break
 		}
@@ -599,12 +608,6 @@ func (conn *Conn) _writeLog(s string, a ...interface{}) {
 		log.Println(msg)
 	} else {
 		conn.LogCh <- msg
-	}
-}
-
-func (conn *Conn) logDebug(s string, a ...interface{}) {
-	if conn.LogLevel == LogDebug {
-		conn._writeLog("[D] "+s, a...)
 	}
 }
 
