@@ -9,7 +9,7 @@ type ErrorCode int
 
 const (
 	// UnpackError - invalid qpack data when create a new Error
-	UnpackError ErrorCode = -1
+	UnpackError ErrorCode = ErrorCode(-200)
 
 	/*
 	 * Error below are a direct mapping to error codes from ThingsDB

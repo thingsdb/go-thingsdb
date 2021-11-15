@@ -2,6 +2,7 @@ package thingsdb
 
 import (
 	"crypto/tls"
+	"os"
 	"testing"
 )
 
@@ -32,7 +33,9 @@ func TestPlayground(t *testing.T) {
 		// Close the connection at the end of this function
 		defer conn.Close()
 
-		if err := conn.AuthToken("Fai6NmH7QYxA6WLYPdtgcy"); err != nil {
+		token := os.Getenv("TI_TOKEN")
+
+		if err := conn.AuthToken(token); err != nil {
 			t.Fatalf(`Failed to authenticate: %v`, err)
 		} else {
 			vars := map[string]interface{}{
