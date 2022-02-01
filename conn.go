@@ -16,7 +16,7 @@ const defaultPingInterval = 30 * time.Second
 const pingTimout = 5 * time.Second
 const authTimeout = 10 * time.Second
 const maxReconnectSleep = time.Minute
-const defaultReconnectionAttempts = 0
+const defaultReconnectionAttempts = 0  // 0 = infinite reconnect attempts
 
 type LogLevelType int8
 
