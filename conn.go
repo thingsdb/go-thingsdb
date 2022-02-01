@@ -16,6 +16,7 @@ const defaultPingInterval = 30 * time.Second
 const pingTimout = 5 * time.Second
 const authTimeout = 10 * time.Second
 const maxReconnectSleep = time.Minute
+const defaultReconnectionAttempts = 0  // 0 = infinite reconnect attempts
 
 type LogLevelType int8
 
@@ -46,13 +47,14 @@ type Conn struct {
 	rooms    *roomStore
 
 	// Public
-	DefaultTimeout time.Duration
-	AutoReconnect  bool
-	PingInterval   time.Duration
-	LogCh          chan string
-	LogLevel       LogLevelType
-	OnNodeStatus   func(ns *NodeStatus)
-	OnWarning      func(we *WarnEvent)
+	DefaultTimeout       time.Duration
+	AutoReconnect        bool
+	ReconnectionAttempts int
+	PingInterval         time.Duration
+	LogCh                chan string
+	LogLevel             LogLevelType
+	OnNodeStatus         func(ns *NodeStatus)
+	OnWarning            func(we *WarnEvent)
 }
 
 // NewConn creates a new ThingsDB Connector.
@@ -84,13 +86,14 @@ func NewConn(host string, port uint16, config *tls.Config) *Conn {
 		rooms:    newRoomStore(),
 
 		// Public
-		DefaultTimeout: 0,
-		AutoReconnect:  true,
-		PingInterval:   defaultPingInterval,
-		LogCh:          nil,
-		LogLevel:       LogWarning,
-		OnNodeStatus:   nil,
-		OnWarning:      nil,
+		DefaultTimeout:       0,
+		AutoReconnect:        true,
+		ReconnectionAttempts: defaultReconnectionAttempts,
+		PingInterval:         defaultPingInterval,
+		LogCh:                nil,
+		LogLevel:             LogWarning,
+		OnNodeStatus:         nil,
+		OnWarning:            nil,
 	}
 }
 
@@ -570,7 +573,7 @@ func (conn *Conn) listen() {
 
 func (conn *Conn) reconnectLoop() {
 	sleep := time.Second
-	for {
+	for i := 1; conn.ReconnectionAttempts == 0 || i <= conn.ReconnectionAttempts; i++ {
 		conn.nodeIdx += 1
 		conn.nodeIdx %= len(conn.nodes)
 
@@ -590,7 +593,7 @@ func (conn *Conn) reconnectLoop() {
 			break
 		}
 
-		conn.logInfo("Try to reconnect in %d second(s)...", sleep/time.Second)
+		conn.logInfo("Attempt %d: try to reconnect in %d second(s)...", i, sleep/time.Second)
 
 		time.Sleep(sleep)
 
