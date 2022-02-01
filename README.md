@@ -118,15 +118,16 @@ Type `Conn` is used as the ThingsDB Connection Client.
 
 There are a few public properties which may be used:
 
-Key            | Type               | Default      | Description
--------------- | ------------------ | ------------ | -----------
-DefaultTimeout | time.Duration      | `0`          | Default time-out used when querying ThingsDB. When `0`, no time-out is used.
-AutoReconnect  | bool               | `true`       | When `true`, the connection will try to re-connect when a connection is lost.
-PingInterval   | time.Duration      | `30s`        | Keep-alive ping interval. When `0`, keep-alive will be disabled.
-LogCh          | chan string        | `nil`        | Forward logging to this channel. When `nil`, log will be send to `log.Println(..)`.
-LogLevel       | LogLevelType       | `LogWarning` | Log level. Available levels: `LogDebug`, `LogInfo`, `LogWarning` and `LogError`.
-OnNodeStatus   | func(\*NodeStatus) | `nil`        | Called when a new node status is received. If implemented, the callback will be called before the client will handle the new status.
-OnWarning      | func(\*WarnEvent)  | `nil`        | Called when a warning is received from ThingsDB. If *not* implemented (`nil`), the client will log a warning.
+Key                  | Type               | Default      | Description
+-------------------- | ------------------ | ------------ | -----------
+DefaultTimeout       | time.Duration      | `0`          | Default time-out used when querying ThingsDB. When `0`, no time-out is used.
+AutoReconnect        | bool               | `true`       | When `true`, the connection will try to re-connect when a connection is lost.
+ReconnectionAttempts | int                | `0`          | Maximum number of re-connect attempts. When `0`, re-connect will try forever. 
+PingInterval   	     | time.Duration      | `30s`        | Keep-alive ping interval. When `0`, keep-alive will be disabled.
+LogCh                | chan string        | `nil`        | Forward logging to this channel. When `nil`, log will be send to `log.Println(..)`.
+LogLevel             | LogLevelType       | `LogWarning` | Log level. Available levels: `LogDebug`, `LogInfo`, `LogWarning` and `LogError`.
+OnNodeStatus         | func(\*NodeStatus) | `nil`        | Called when a new node status is received. If implemented, the callback will be called before the client will handle the new status.
+OnWarning            | func(\*WarnEvent)  | `nil`        | Called when a warning is received from ThingsDB. If *not* implemented (`nil`), the client will log a warning.
 
 *Example:*
 
