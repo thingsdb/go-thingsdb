@@ -16,7 +16,7 @@ const defaultPingInterval = 30 * time.Second
 const pingTimout = 5 * time.Second
 const authTimeout = 10 * time.Second
 const maxReconnectSleep = time.Minute
-const defaultReconnectionAttempts = 7
+const defaultReconnectionAttempts = 0
 
 type LogLevelType int8
 
@@ -573,7 +573,7 @@ func (conn *Conn) listen() {
 
 func (conn *Conn) reconnectLoop() {
 	sleep := time.Second
-	for i := 0; i < conn.ReconnectionAttempts; i++ {
+	for i := 1; conn.ReconnectionAttempts == 0 || i <= conn.ReconnectionAttempts; i++ {
 		conn.nodeIdx += 1
 		conn.nodeIdx %= len(conn.nodes)
 
@@ -593,7 +593,7 @@ func (conn *Conn) reconnectLoop() {
 			break
 		}
 
-		conn.logInfo("Try to reconnect in %d second(s)...", sleep/time.Second)
+		conn.logInfo("Attempt %d: try to reconnect in %d second(s)...", i, sleep/time.Second)
 
 		time.Sleep(sleep)
 
