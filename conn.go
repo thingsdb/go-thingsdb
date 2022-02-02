@@ -573,7 +573,8 @@ func (conn *Conn) listen() {
 
 func (conn *Conn) reconnectLoop() {
 	sleep := time.Second
-	for i := 1; conn.ReconnectionAttempts == 0 || i <= conn.ReconnectionAttempts; i++ {
+	attempt := 1
+	for {
 		conn.nodeIdx += 1
 		conn.nodeIdx %= len(conn.nodes)
 
@@ -593,7 +594,12 @@ func (conn *Conn) reconnectLoop() {
 			break
 		}
 
-		conn.logInfo("Attempt %d: try to reconnect in %d second(s)...", i, sleep/time.Second)
+		if attempt == conn.ReconnectionAttempts {
+			conn.logInfo("Attempt %d failed. \n", attempt)
+			break
+		}
+
+		conn.logInfo("Attempt %d failed. Try to reconnect in %d second(s)...", attempt, sleep/time.Second)
 
 		time.Sleep(sleep)
 
@@ -602,6 +608,8 @@ func (conn *Conn) reconnectLoop() {
 		if sleep > maxReconnectSleep {
 			sleep = maxReconnectSleep
 		}
+
+		attempt++
 	}
 }
 
