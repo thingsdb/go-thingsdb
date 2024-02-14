@@ -411,8 +411,8 @@ func getResult(respCh chan *pkg, timeoutCh chan bool) ([]byte, error) {
 		} else {
 			switch Proto(pkg.tp) {
 			case ProtoResData:
-				result = make([]byte, len(pkg.data))
-				copy(result, pkg.data)
+				result = pkg.data
+				pkg.data = nil
 			case ProtoResPong, ProtoResOk:
 				result = nil
 			case ProtoResError:
