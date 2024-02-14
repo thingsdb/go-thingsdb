@@ -1,7 +1,6 @@
 package thingsdb
 
 import (
-	"bytes"
 	"crypto/tls"
 	"fmt"
 	"log"
@@ -412,7 +411,8 @@ func getResult(respCh chan *pkg, timeoutCh chan bool) ([]byte, error) {
 		} else {
 			switch Proto(pkg.tp) {
 			case ProtoResData:
-				result = bytes.Clone(pkg.data)
+				result = make([]byte, len(pkg.data))
+				copy(result, pkg.data)
 			case ProtoResPong, ProtoResOk:
 				result = nil
 			case ProtoResError:
