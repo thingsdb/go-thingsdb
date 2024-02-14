@@ -19,7 +19,9 @@
     * [AuthToken(token) -> error](#AuthToken)
     * [IsConnected() -> bool](#IsConnected)
     * [Query(scope, code, vars) -> interface{}, error](#Query)
+    * [QueryRaw(scope, code, vars) -> []byte, error](#QueryRaw)
     * [Run(scope, procedure, args) -> interface{}, error](#Run)
+    * [RunRaw(scope, procedure, args) -> []byte, error](#RunRaw)
     * [Emit(scope, roomId, event, args) -> error](#Emit-Conn)
     * [Close()](#Close)
   * [Room](#Room)
@@ -228,6 +230,10 @@ if res, err := conn.Query("/t", "`Hello {name}!!`;", vars); err == nil {
 }
 ```
 
+### QueryRaw
+
+The same as Query, except a raw `[]byte` array is returned.
+
 ### Run
 
 Run a procedure in ThingsDB. Arguments are optional and may be either positional `[]interface{}` or by map `map[string]interface{}`.
@@ -273,6 +279,10 @@ if res, err := conn.Run("//stuff", "subtract", vars); err == nil {
     fmt.Println(res)  // 10
 }
 ```
+
+### RunRaw
+
+The same as Run, except a raw `[]byte` array is returned.
 
 ### Emit-Conn
 
