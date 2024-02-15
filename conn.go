@@ -16,7 +16,7 @@ const defaultPingInterval = 30 * time.Second
 const pingTimout = 5 * time.Second
 const authTimeout = 10 * time.Second
 const maxReconnectSleep = time.Minute
-const defaultReconnectionAttempts = 0  // 0 = infinite reconnect attempts
+const defaultReconnectionAttempts = 0 // 0 = infinite reconnect attempts
 
 type LogLevelType int8
 
@@ -61,15 +61,14 @@ type Conn struct {
 //
 // Example:
 //
-//     thingsdb.NewConn("localhost", 9200, nil)
+//	thingsdb.NewConn("localhost", 9200, nil)
 //
 // Or, with TLS (SSL) config enabled
 //
-//     config := &tls.Config{
-//         InsecureSkipVerify: false,
-//     }
-//     thingsdb.NewConn("localhost", 9200, config)
-//
+//	config := &tls.Config{
+//	    InsecureSkipVerify: false,
+//	}
+//	thingsdb.NewConn("localhost", 9200, config)
 func NewConn(host string, port uint16, config *tls.Config) *Conn {
 	return &Conn{
 		// Private
@@ -111,10 +110,9 @@ func NewConn(host string, port uint16, config *tls.Config) *Conn {
 //
 // Example:
 //
-//     conn := thingsdb.NewConn("node1.local", 9200, nil)
-//     conn.AddNode("node2.local", 9200)
-//     conn.AddNode("node3.local", 9200)
-//
+//	conn := thingsdb.NewConn("node1.local", 9200, nil)
+//	conn.AddNode("node2.local", 9200)
+//	conn.AddNode("node3.local", 9200)
 func (conn *Conn) AddNode(host string, port uint16) {
 	conn.nodes = append(conn.nodes, node{host: host, port: port})
 }
@@ -123,8 +121,7 @@ func (conn *Conn) AddNode(host string, port uint16) {
 //
 // Example:
 //
-//     thingsdb.NewConn("localhost", 9200, nil).ToString()  // "localhost:9200"
-//
+//	thingsdb.NewConn("localhost", 9200, nil).ToString()  // "localhost:9200"
 func (conn *Conn) ToString() string {
 	node := conn.node()
 	if strings.Count(node.host, ":") > 0 {
@@ -189,26 +186,38 @@ func (conn *Conn) IsConnected() bool {
 //
 // Example:
 //
-//     if res, err := conn.Query("/t", "'Hello Go Connector for ThingsDB!!';", nil); err == nil {
-//         fmt.Println(res)  // "Hello Go Connector for ThingsDB!!"
-//     }
+//	if res, err := conn.Query("/t", "'Hello Go Connector for ThingsDB!!';", nil); err == nil {
+//	    fmt.Println(res)  // "Hello Go Connector for ThingsDB!!"
+//	}
 //
 // Arguments can be provided using a `map[string]interface{}`, for example:
 //
-//     vars := map[string]interface{}{
-//         "name": "Alice",
-//     }
+//	vars := map[string]interface{}{
+//	    "name": "Alice",
+//	}
 //
-//     if res, err := conn.Query("/t", "`Hello {name}!!`;", vars); err == nil {
-//         fmt.Println(res) // "Hello Alice!!"
-//     }
-//
+//	if res, err := conn.Query("/t", "`Hello {name}!!`;", vars); err == nil {
+//	    fmt.Println(res) // "Hello Alice!!"
+//	}
 func (conn *Conn) Query(scope string, code string, vars map[string]interface{}) (interface{}, error) {
+	var result interface{}
 	data := []interface{}{scope, code}
 	if vars != nil {
 		data = append(data, vars)
 	}
+	res, err := conn.ensureWrite(ProtoReqQuery, data)
+	if err == nil {
+		err = msgpack.Unmarshal(res, &result)
+	}
+	return result, err
+}
 
+// QueryRaw is like Query except a raw []byte array is returned
+func (conn *Conn) QueryRaw(scope string, code string, vars map[string]interface{}) ([]byte, error) {
+	data := []interface{}{scope, code}
+	if vars != nil {
+		data = append(data, vars)
+	}
 	return conn.ensureWrite(ProtoReqQuery, data)
 }
 
@@ -216,43 +225,57 @@ func (conn *Conn) Query(scope string, code string, vars map[string]interface{}) 
 //
 // Example without arguments:
 //
-//     // Suppose collection `stuff` has the following procedure:
-//     // new_procedure('greet', || 'Hi');
+//	// Suppose collection `stuff` has the following procedure:
+//	// new_procedure('greet', || 'Hi');
 //
-//     if res, err := conn.Run("//stuff", "greet", nil); err == nil {
-//         fmt.Println(res)  // "Hi"
-//     }
+//	if res, err := conn.Run("//stuff", "greet", nil); err == nil {
+//	    fmt.Println(res)  // "Hi"
+//	}
 //
 // Example using positional arguments:
 //
-//     // Suppose collection `stuff` has the following procedure:
-//     // new_procedure('subtract', |a, b| a - b);
+//	// Suppose collection `stuff` has the following procedure:
+//	// new_procedure('subtract', |a, b| a - b);
 //
-//     args := []interface{}{40, 10}
+//	args := []interface{}{40, 10}
 //
-//     if res, err := conn.Run("//stuff", "subtract", args); err == nil {
-//         fmt.Println(res)  // 30
-//     }
+//	if res, err := conn.Run("//stuff", "subtract", args); err == nil {
+//	    fmt.Println(res)  // 30
+//	}
 //
 // Example using mapped arguments:
 //
-//     // Suppose collection `stuff` has the following procedure:
-//     // new_procedure('subtract', |a, b| a - b);
+//	// Suppose collection `stuff` has the following procedure:
+//	// new_procedure('subtract', |a, b| a - b);
 //
-//     args := map[string]interface{}{
-//         "a": 15,
-//         "b": 5,
-//     }
-//     if res, err := conn.Run("//stuff", "subtract", args); err == nil {
-//         fmt.Println(res)  // 10
-//     }
+//	args := map[string]interface{}{
+//	    "a": 15,
+//	    "b": 5,
+//	}
+//	if res, err := conn.Run("//stuff", "subtract", args); err == nil {
+//	    fmt.Println(res)  // 10
+//	}
+//
 // ```
 func (conn *Conn) Run(scope string, procedure string, args interface{}) (interface{}, error) {
+	var result interface{}
 	data := []interface{}{scope, procedure}
 	if args != nil {
 		data = append(data, args)
 	}
+	res, err := conn.ensureWrite(ProtoReqRun, data)
+	if err == nil {
+		err = msgpack.Unmarshal(res, &result)
+	}
+	return result, err
+}
 
+// RunRaw is like Query except a raw []byte array is returned
+func (conn *Conn) RunRaw(scope string, procedure string, args interface{}) ([]byte, error) {
+	data := []interface{}{scope, procedure}
+	if args != nil {
+		data = append(data, args)
+	}
 	return conn.ensureWrite(ProtoReqRun, data)
 }
 
@@ -263,15 +286,14 @@ func (conn *Conn) Run(scope string, procedure string, args interface{}) (interfa
 //
 // Example:
 //
-//     args := []interface{}{"This is a message"}
+//	args := []interface{}{"This is a message"}
 //
-//     err := conn.Emit(
-//         "//stuff",      // scope of the Room
-//         123,            // Room Id
-//         "new-message",  // Event to emit
-//         args            // Arguments (may be nil)
-//     );
-//
+//	err := conn.Emit(
+//	    "//stuff",      // scope of the Room
+//	    123,            // Room Id
+//	    "new-message",  // Event to emit
+//	    args            // Arguments (may be nil)
+//	);
 func (conn *Conn) Emit(scope string, roomId uint64, event string, args []interface{}) error {
 	data := []interface{}{scope, roomId, event}
 	if args != nil {
@@ -345,17 +367,20 @@ func (conn *Conn) connect() error {
 }
 
 func (conn *Conn) joinOrLeave(proto Proto, scope string, ids []*uint64) error {
+	var result interface{}
 	data := make([]interface{}, 1+len(ids))
 	data[0] = scope
 	for i, v := range ids {
 		data[1+i] = v
 	}
 	res, err := conn.ensureWrite(proto, data)
-
 	if err == nil {
-		arr, ok := res.([]interface{})
+		err = msgpack.Unmarshal(res, &result)
+	}
+	if err == nil {
+		arr, ok := result.([]interface{})
 		if !ok {
-			return fmt.Errorf("unexpected Join response: %v", res)
+			return fmt.Errorf("unexpected Join response: %v", result)
 		}
 		for i, val := range arr {
 			switch val.(type) {
@@ -375,8 +400,8 @@ func (conn *Conn) leave(scope string, ids []*uint64) error {
 	return conn.joinOrLeave(ProtoReqLeave, scope, ids)
 }
 
-func getResult(respCh chan *pkg, timeoutCh chan bool) (interface{}, error) {
-	var result interface{}
+func getResult(respCh chan *pkg, timeoutCh chan bool) ([]byte, error) {
+	var result []byte
 	var err error
 
 	select {
@@ -386,7 +411,8 @@ func getResult(respCh chan *pkg, timeoutCh chan bool) (interface{}, error) {
 		} else {
 			switch Proto(pkg.tp) {
 			case ProtoResData:
-				err = msgpack.Unmarshal(pkg.data, &result)
+				result = pkg.data
+				pkg.data = nil
 			case ProtoResPong, ProtoResOk:
 				result = nil
 			case ProtoResError:
@@ -410,7 +436,7 @@ func (conn *Conn) nextPid() uint16 {
 	return pid
 }
 
-func (conn *Conn) getRespCh(pid uint16, b []byte, timeout time.Duration) (interface{}, error) {
+func (conn *Conn) getRespCh(pid uint16, b []byte, timeout time.Duration) ([]byte, error) {
 	var err error
 	respCh := make(chan *pkg, 1)
 
@@ -445,7 +471,7 @@ func (conn *Conn) getRespCh(pid uint16, b []byte, timeout time.Duration) (interf
 	return result, err
 }
 
-func (conn *Conn) ensureWrite(tp Proto, data interface{}) (interface{}, error) {
+func (conn *Conn) ensureWrite(tp Proto, data interface{}) ([]byte, error) {
 
 	pid := conn.nextPid()
 	b, err := pkgPack(pid, tp, data)
