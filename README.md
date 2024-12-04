@@ -370,7 +370,7 @@ room := thingsdb.NewRoomFromId("//stuff", 17)
 
 NewRoomFromName creates a new room using the name from a room.
 
-Not every room has a name. The function [set_name]https://docs.thingsdb.io/v1/data-types/room/set_name/ must be used to give a room a name.
+Not every room has a name. The function [set_name](https://docs.thingsdb.io/v1/data-types/room/set_name/) must be used to give a room a name.
 *Example:*
 
 ```go
