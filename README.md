@@ -27,6 +27,7 @@
   * [Room](#Room)
     * [NewRoom(scope, code) -> *Room](#NewRoom)
     * [NewRoomFromId(scope, roomId) -> *Room](#NewRoomFromId)
+	* [NewRoomFromName(scope, name) -> *Room](#NewRoomFromName)
     * [Id() -> uint64](#Id)
     * [Scope() -> string](#Scope)
     * [HandleEvent(event, handle)](#HandleEvent)
@@ -124,7 +125,7 @@ Key                  | Type               | Default      | Description
 -------------------- | ------------------ | ------------ | -----------
 DefaultTimeout       | time.Duration      | `0`          | Default time-out used when querying ThingsDB. When `0`, no time-out is used.
 AutoReconnect        | bool               | `true`       | When `true`, the connection will try to re-connect when a connection is lost.
-ReconnectionAttempts | int                | `0`          | Maximum number of re-connect attempts. When `0`, re-connect will try forever. 
+ReconnectionAttempts | int                | `0`          | Maximum number of re-connect attempts. When `0`, re-connect will try forever.
 PingInterval   	     | time.Duration      | `30s`        | Keep-alive ping interval. When `0`, keep-alive will be disabled.
 LogCh                | chan string        | `nil`        | Forward logging to this channel. When `nil`, log will be send to `log.Println(..)`.
 LogLevel             | LogLevelType       | `LogWarning` | Log level. Available levels: `LogDebug`, `LogInfo`, `LogWarning` and `LogError`.
@@ -362,6 +363,19 @@ If the room Id unknown, you may want use [NewRoom(..)](#NewRoom) to get the Id f
 ```go
 // Suppose Collection stuff has a room with Id 17
 room := thingsdb.NewRoomFromId("//stuff", 17)
+```
+
+
+### NewRoomFromName
+
+NewRoomFromName creates a new room using the name from a room.
+
+Not every room has a name. The function [set_name]https://docs.thingsdb.io/v1/data-types/room/set_name/ must be used to give a room a name.
+*Example:*
+
+```go
+// Suppose Collection stuff has a room with name "my_room"
+room := thingsdb.NewRoomFromName("//stuff", "my_room")
 ```
 
 ### Id

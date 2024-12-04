@@ -339,7 +339,7 @@ func (conn *Conn) auth() error {
 		return err
 	}
 
-	return fmt.Errorf("No authentication method available")
+	return fmt.Errorf("no authentication method available")
 }
 
 func (conn *Conn) connect() error {

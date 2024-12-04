@@ -16,6 +16,7 @@ type Room struct {
 	// Private
 	id            uint64
 	code          *string
+	name          *string
 	scope         string
 	conn          *Conn
 	waitJoin      chan error
@@ -36,9 +37,8 @@ type Room struct {
 //
 // Example:
 //
-//     // Suppose Collection stuff has a room (.room)
-//     room := thingsdb.NewRoom("//stuff", ".room.id();")
-//
+//	// Suppose Collection stuff has a room (.room)
+//	room := thingsdb.NewRoom("//stuff", ".room.id();")
 func NewRoom(scope string, code string) *Room {
 	room := NewRoomFromId(scope, 0)
 	room.code = &code
@@ -51,14 +51,14 @@ func NewRoom(scope string, code string) *Room {
 //
 // Example:
 //
-//     // Suppose Collection stuff has a room with Id 17
-//     room := thingsdb.NewRoomFromId("//stuff", 17)
-//
+//	// Suppose Collection stuff has a room with Id 17
+//	room := thingsdb.NewRoomFromId("//stuff", 17)
 func NewRoomFromId(scope string, id uint64) *Room {
 	return &Room{
 		// Private
 		id:            id,
 		code:          nil,
+		name:          nil,
 		scope:         scope,
 		conn:          nil,
 		waitJoin:      nil,
@@ -72,6 +72,20 @@ func NewRoomFromId(scope string, id uint64) *Room {
 		OnEmit:   bar,
 		Data:     nil,
 	}
+}
+
+// NewRoom creates a new room using the room name.
+//
+// Example:
+//
+//	// Suppose Collection stuff has a room (.room)
+//	room := thingsdb.NewRoomFromName("//stuff", "my_room")
+func NewRoomFromName(scope string, name string) *Room {
+	room := NewRoomFromId(scope, 0)
+	code := "room(name).id();"
+	room.code = &code
+	room.name = &name
+	return room
 }
 
 // Id returns the Id of the room.
@@ -90,26 +104,25 @@ func (room *Room) Scope() string {
 //
 // Example:
 //
-//     func onNewMessage(room *thingsdb.Room, args []interface{}) {
-//         if len(args) != 1 {
-//            fmt.Println("Invalid number of arguments")
-//            return
-//         }
+//	func onNewMessage(room *thingsdb.Room, args []interface{}) {
+//	    if len(args) != 1 {
+//	       fmt.Println("Invalid number of arguments")
+//	       return
+//	    }
 //
-//         msg, ok := args[0].(string)
-//         if !ok {
-//            fmt.Println("Expecting argument 1 to be of type string")
-//            return
-//         }
+//	    msg, ok := args[0].(string)
+//	    if !ok {
+//	       fmt.Println("Expecting argument 1 to be of type string")
+//	       return
+//	    }
 //
-//         fmt.Println(msg)  // Just print the message
-//     }
+//	    fmt.Println(msg)  // Just print the message
+//	}
 //
-//     room = thingsdb.NewRoom("//stuff", ".chatRoom.id();")
+//	room = thingsdb.NewRoom("//stuff", ".chatRoom.id();")
 //
-//     // Add event handler for the "new-message" event
-//     room.HandleEvent("new-message", onNewMessage)
-//
+//	// Add event handler for the "new-message" event
+//	room.HandleEvent("new-message", onNewMessage)
 func (room *Room) HandleEvent(event string, handle func(room *Room, args []interface{})) {
 	room.eventHandlers[event] = handle
 }
@@ -123,8 +136,7 @@ func (room *Room) HandleEvent(event string, handle func(room *Room, args []inter
 //
 // Example:
 //
-//     err := room.Join(conn, thingsdb.DefaultWait)
-//
+//	err := room.Join(conn, thingsdb.DefaultWait)
 func (room *Room) Join(conn *Conn, wait time.Duration) error {
 
 	if wait > 0 {
@@ -142,7 +154,7 @@ func (room *Room) Join(conn *Conn, wait time.Duration) error {
 
 		go func() {
 			time.Sleep(wait)
-			room.waitJoin <- fmt.Errorf("Timeout while waiting for the join event on room Id %d", room.id)
+			room.waitJoin <- fmt.Errorf("timeout while waiting for the join event on room Id %d", room.id)
 		}()
 
 		for {
@@ -159,8 +171,7 @@ func (room *Room) Join(conn *Conn, wait time.Duration) error {
 //
 // Example:
 //
-//    err := room.Leave()
-//
+//	err := room.Leave()
 func (room *Room) Leave() error {
 	if room.id == 0 {
 		return fmt.Errorf("Room Id is zero (0), most likely the room has never been joined")
@@ -187,13 +198,12 @@ func (room *Room) Leave() error {
 //
 // Example:
 //
-//     args := []interface{}{"Just some chat message"}
+//	args := []interface{}{"Just some chat message"}
 //
-//     err := room.Emit(
-//         "new-message",  // Event to emit
-//         args            // Arguments (may be nil)
-//     );
-//
+//	err := room.Emit(
+//	    "new-message",  // Event to emit
+//	    args            // Arguments (may be nil)
+//	);
 func (room *Room) Emit(event string, args []interface{}) error {
 	if room.conn == nil {
 		return fmt.Errorf("Room Id %d is not joined", room.id)
@@ -206,10 +216,16 @@ func (room *Room) join(conn *Conn) error {
 	defer conn.rooms.mux.Unlock()
 
 	if room.id == 0 {
+		var vars map[string]interface{}
 		if room.code == nil {
 			return fmt.Errorf("Code or a room Id > 0 is required")
 		}
-		val, err := conn.Query(room.scope, *room.code, nil)
+		if room.name != nil {
+			vars = map[string]interface{}{
+				"name": *room.name,
+			}
+		}
+		val, err := conn.Query(room.scope, *room.code, vars)
 		if err != nil {
 			return err
 		}
@@ -229,7 +245,7 @@ func (room *Room) join(conn *Conn) error {
 		case uint64:
 			roomId = val
 		default:
-			return fmt.Errorf("Expecting code `%s` to return with a room Id (type integer), bot got: %v", *room.code, val)
+			return fmt.Errorf("expecting code `%s` to return with a room Id (type integer), bot got: %v", *room.code, val)
 		}
 
 		roomIds := []*uint64{&roomId}

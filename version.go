@@ -1,7 +1,7 @@
 package thingsdb
 
 // Version exposes the go-thingsdb version
-const Version = "1.0.6"
+const Version = "1.0.7"
 
 //Publish module:
 //
