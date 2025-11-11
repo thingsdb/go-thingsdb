@@ -58,4 +58,6 @@ const (
 	ProtoReqLeave Proto = 39
 	// ProtoReqEmit requires `[scope, roomId, event, arguments...]`
 	ProtoReqEmit Proto = 40
+	// ProtoReqEmitPeers requires `[scope, roomId, event, arguments...]`
+	ProtoReqEmitPeers Proto = 41
 )

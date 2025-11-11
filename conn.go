@@ -304,6 +304,31 @@ func (conn *Conn) Emit(scope string, roomId uint64, event string, args []interfa
 	return err
 }
 
+// Emit an even to a room to peers only (no echo back).
+//
+// If a `Room` is created for the given `roomId`, you probable want to
+// use EmitPeers(..) on the `Room` type.
+//
+// Example:
+//
+//	args := []interface{}{"This is a message"}
+//
+//	err := conn.EmitPeers(
+//	    "//stuff",      // scope of the Room
+//	    123,            // Room Id
+//	    "new-message",  // Event to emit
+//	    args            // Arguments (may be nil)
+//	);
+func (conn *Conn) EmitPeers(scope string, roomId uint64, event string, args []interface{}) error {
+	data := []interface{}{scope, roomId, event}
+	if args != nil {
+		data = append(data, args...)
+	}
+
+	_, err := conn.ensureWrite(ProtoReqEmitPeers, data)
+	return err
+}
+
 // Close an open connection.
 //
 // > Warning: After calling Close(), the `conn.AutoReconnect` property will be

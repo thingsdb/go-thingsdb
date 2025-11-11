@@ -23,6 +23,7 @@
     * [Run(scope, procedure, args) -> interface{}, error](#Run)
     * [RunRaw(scope, procedure, args) -> []byte, error](#RunRaw)
     * [Emit(scope, roomId, event, args) -> error](#Emit-Conn)
+    * [EmitPeers(scope, roomId, event, args) -> error](#EmitPeers-Conn)
     * [Close()](#Close)
   * [Room](#Room)
     * [NewRoom(scope, code) -> *Room](#NewRoom)
@@ -34,6 +35,7 @@
     * [Join(conn, wait) -> error](#Join)
     * [Leave() -> error](#Leave)
     * [Emit(event, args) -> error](#Emit)
+    * [EmitPeers(event, args) -> error](#EmitPeers)
 
 ---------------------------------------
 
@@ -303,6 +305,10 @@ err := conn.Emit(
 );
 ```
 
+### EmitPeers-Conn
+
+Like [Emit](#Emit-Conn), but without echo back. It emits the event to peers only.
+
 ### Close
 
 Close an open connection.
@@ -455,3 +461,8 @@ err := room.Emit(
     args            // Arguments (may be nil)
 );
 ```
+
+### EmitPeers
+
+Like [Emit](#Emit), but without echo back. It emits the event to peers only.
+

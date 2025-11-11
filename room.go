@@ -211,6 +211,23 @@ func (room *Room) Emit(event string, args []interface{}) error {
 	return room.conn.Emit(room.scope, room.id, event, args)
 }
 
+// Emit an even to a room to peers only (no echo back).
+//
+// Example:
+//
+//	args := []interface{}{"Just some chat message"}
+//
+//	err := room.EmitPeers(
+//	    "new-message",  // Event to emit to peers
+//	    args            // Arguments (may be nil)
+//	);
+func (room *Room) EmitPeers(event string, args []interface{}) error {
+	if room.conn == nil {
+		return fmt.Errorf("Room Id %d is not joined", room.id)
+	}
+	return room.conn.EmitPeers(room.scope, room.id, event, args)
+}
+
 func (room *Room) join(conn *Conn) error {
 	conn.rooms.mux.Lock()
 	defer conn.rooms.mux.Unlock()
