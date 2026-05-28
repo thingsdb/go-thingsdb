@@ -561,10 +561,8 @@ func (conn *Conn) closeAndReconnect(s string, a ...interface{}) {
 		conn.buf.conn = nil
 		prev.Close()
 
-		if conn.AutoReconnect {
-			conn.logInfo("Try to reconnect...")
-			go conn.reconnectLoop()
-		}
+		conn.logInfo("Try to reconnect...")
+		go conn.reconnectLoop()
 	}
 	conn.mux.Unlock()
 }
@@ -582,7 +580,9 @@ func (conn *Conn) listen() {
 					}
 
 					if nodeStatus.Status == "SHUTTING_DOWN" {
-						conn.closeAndReconnect("Node %d is shutting down... (%s)", nodeStatus.Id, conn.ToString())
+						if conn.AutoReconnect {
+							conn.closeAndReconnect("Node %d is shutting down... (%s)", nodeStatus.Id, conn.ToString())
+						}
 					} else {
 						conn.logInfo("Node %d has a new status: %v", nodeStatus.Id, nodeStatus.Status)
 					}
@@ -617,7 +617,9 @@ func (conn *Conn) listen() {
 				conn.logError("No response channel found for pid %d, probably the task has been cancelled ot timed out.", pkg.pid)
 			}
 		case err := <-conn.buf.errCh:
-			conn.closeAndReconnect("Err: %s (%s)", niceErr(err), conn.ToString())
+			if conn.AutoReconnect {
+				conn.closeAndReconnect("Err: %s (%s)", niceErr(err), conn.ToString())
+			}
 		}
 	}
 }
