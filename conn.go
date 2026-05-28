@@ -343,7 +343,13 @@ func (conn *Conn) Close() {
 	if conn.buf.conn != nil {
 		node := conn.node()
 		conn.logWarning("Closing connection to %s:%d", node.host, node.port)
-		conn.buf.conn.Close()
+		for _, channel := range conn.respMap {
+			channel <- nil
+		}
+
+		prev := conn.buf.conn
+		conn.buf.conn = nil
+		prev.Close() // Prevents loop
 	}
 	conn.mux.Unlock()
 }
@@ -552,11 +558,9 @@ func (conn *Conn) closeAndReconnect(s string, a ...interface{}) {
 	conn.mux.Lock()
 	if conn.buf.conn != nil {
 		conn.logWarning(s, a...)
-
 		for _, channel := range conn.respMap {
 			channel <- nil
 		}
-
 		prev := conn.buf.conn
 		conn.buf.conn = nil
 		prev.Close()
@@ -619,6 +623,8 @@ func (conn *Conn) listen() {
 		case err := <-conn.buf.errCh:
 			if conn.AutoReconnect {
 				conn.closeAndReconnect("Err: %s (%s)", niceErr(err), conn.ToString())
+			} else {
+				conn.Close()
 			}
 		}
 	}
