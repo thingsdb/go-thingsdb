@@ -7,6 +7,7 @@ import (
 // roomEvent is an event dedicated to the rooms API (Join/Leave/Emit/Delete)
 type roomEvent struct {
 	Tp    Proto
+	Scope string        `msgpack:"scope"`
 	Id    uint64        `msgpack:"id"`
 	Event string        `msgpack:"event"`
 	Args  []interface{} `msgpack:"args"`

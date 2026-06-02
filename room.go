@@ -54,6 +54,7 @@ func NewRoom(scope string, code string) *Room {
 //	// Suppose Collection stuff has a room with Id 17
 //	room := thingsdb.NewRoomFromId("//stuff", 17)
 func NewRoomFromId(scope string, id uint64) *Room {
+
 	return &Room{
 		// Private
 		id:            id,
@@ -288,14 +289,24 @@ func (room *Room) join(conn *Conn) error {
 		}
 	}
 
-	conn.rooms.store[room.id] = room
+	room.scope = toFullScope(room.scope)
+	conn.rooms.store[room.scope][room.id] = room
 	room.OnInit(room)
 
 	return nil
 }
 
 func (room *Room) onStop(f func(room *Room)) {
-	delete(room.conn.rooms.store, room.id)
+	scope := room.scope
+	roomID := room.id
+	conn := room.conn
+
+	if roomMap, exists := conn.rooms.store[scope]; exists {
+		delete(roomMap, roomID)
+		if len(roomMap) == 0 {
+			delete(conn.rooms.store, scope)
+		}
+	}
 	f(room)
 }
 

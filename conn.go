@@ -349,7 +349,7 @@ func (conn *Conn) Close() {
 
 		prev := conn.buf.conn
 		conn.buf.conn = nil
-		prev.Close() // Prevents loop
+		_ = prev.Close() // Prevents loop
 	}
 	conn.mux.Unlock()
 }
@@ -563,7 +563,7 @@ func (conn *Conn) closeAndReconnect(s string, a ...interface{}) {
 		}
 		prev := conn.buf.conn
 		conn.buf.conn = nil
-		prev.Close()
+		_ = prev.Close()
 
 		conn.logInfo("Try to reconnect...")
 		go conn.reconnectLoop()
@@ -603,7 +603,7 @@ func (conn *Conn) listen() {
 			case ProtoOnRoomDelete, ProtoOnRoomEvent, ProtoOnRoomJoin, ProtoOnRoomLeave:
 				ev, err := newRoomEvent(pkg)
 				if err == nil {
-					if room, ok := conn.rooms.getRoom(ev.Id); ok {
+					if room, ok := conn.rooms.getRoom(ev.Scope, ev.Id); ok {
 						room.onEvent(ev)
 					} else {
 						conn.logInfo("Room Id %d is not registered on this connection", ev.Id)
