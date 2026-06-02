@@ -38,7 +38,7 @@ func TestPlayground(t *testing.T) {
 		if err := conn.AuthToken(token); err != nil {
 			t.Fatalf(`Failed to authenticate: %v`, err)
 		} else {
-			vars := map[string]interface{}{
+			vars := map[string]any{
 				"index": 1,
 			}
 

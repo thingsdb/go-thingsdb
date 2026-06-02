@@ -7,7 +7,7 @@ import (
 	thingsdb "github.com/thingsdb/go-thingsdb"
 )
 
-func example(conn *thingsdb.Conn, res chan interface{}) {
+func example(conn *thingsdb.Conn, res chan any) {
 	if err := conn.Connect(); err != nil {
 		res <- err
 		return
@@ -24,7 +24,7 @@ func example(conn *thingsdb.Conn, res chan interface{}) {
 	data, err := conn.Query(
 		"//Doc",                // Scope
 		".greetings.choice();", // ThingsDB code
-		nil,                    // Variable, may be a map[string]interface{}
+		nil,                    // Variable, may be a map[string]any
 	)
 
 	if err == nil {
@@ -41,7 +41,7 @@ func main() {
 	}
 
 	// In this example we will use a channel to read the example response
-	res := make(chan interface{})
+	res := make(chan any)
 
 	// Create a new ThingsDB connection
 	conn := thingsdb.NewConn("playground.thingsdb.net", 9400, conf)

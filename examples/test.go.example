@@ -27,7 +27,7 @@ func example(conn *thingsdb.Conn, ok chan bool) {
 	}
 
 	// Arguments are optional, if no arguments are required, args may be `nil`
-	args := map[string]interface{}{
+	args := map[string]any{
 		"a": 6,
 		"b": 7,
 	}

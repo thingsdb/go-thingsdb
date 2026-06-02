@@ -18,9 +18,9 @@
     * [AuthPassword(username, password) -> error](#AuthPassword)
     * [AuthToken(token) -> error](#AuthToken)
     * [IsConnected() -> bool](#IsConnected)
-    * [Query(scope, code, vars) -> interface{}, error](#Query)
+    * [Query(scope, code, vars) -> any, error](#Query)
     * [QueryRaw(scope, code, vars) -> []byte, error](#QueryRaw)
-    * [Run(scope, procedure, args) -> interface{}, error](#Run)
+    * [Run(scope, procedure, args) -> any, error](#Run)
     * [RunRaw(scope, procedure, args) -> []byte, error](#RunRaw)
     * [Emit(scope, roomId, event, args) -> error](#Emit-Conn)
     * [EmitPeers(scope, roomId, event, args) -> error](#EmitPeers-Conn)
@@ -85,7 +85,7 @@ func example(conn *thingsdb.Conn, ok chan bool) {
 	}
 
 	// Arguments are optional, if no arguments are required, vars may be `nil`
-	vars := map[string]interface{}{
+	vars := map[string]any{
 		"a": 6,
 		"b": 7,
 	}
@@ -222,10 +222,10 @@ if res, err := conn.Query("/t", "'Hello Go Connector for ThingsDB!!';", nil); er
 }
 ```
 
-Arguments can be provided using a `map[string]interface{}`, for example:
+Arguments can be provided using a `map[string]any`, for example:
 
 ```go
-vars := map[string]interface{}{
+vars := map[string]any{
     "name": "Alice",
 }
 
@@ -240,7 +240,7 @@ The same as Query, except a raw `[]byte` array is returned.
 
 ### Run
 
-Run a procedure in ThingsDB. Arguments are optional and may be either positional `[]interface{}` or by map `map[string]interface{}`.
+Run a procedure in ThingsDB. Arguments are optional and may be either positional `[]any` or by map `map[string]any`.
 
 *Example without arguments:*
 
@@ -261,7 +261,7 @@ if res, err := conn.Run("//stuff", "greet", nil); err == nil {
 //
 //   new_procedure('subtract', |a, b| a - b);
 //
-args := []interface{}{40, 10}
+args := []any{40, 10}
 
 if res, err := conn.Run("//stuff", "subtract", args); err == nil {
     fmt.Println(res)  // 30
@@ -275,7 +275,7 @@ if res, err := conn.Run("//stuff", "subtract", args); err == nil {
 //
 //   new_procedure('subtract', |a, b| a - b);
 //
-vars := map[string]interface{}{
+vars := map[string]any{
     "a": 15,
     "b": 5,
 }
@@ -295,7 +295,7 @@ Emit an even to a room. If a `Room` is created for the given `roomId`, you proba
 *Example:*
 
 ```go
-args := []interface{}{"This is a message"}
+args := []any{"This is a message"}
 
 err := conn.Emit(
     "//stuff",      // scope of the Room
@@ -325,8 +325,8 @@ OnInit     | func(\*Room) | *dummy func* | Called only once at the first join. T
 OnJoin     | func(\*Room) | *dummy func* | Called at each join, thus also after a re-connect.
 OnLeave    | func(\*Room) | *dummy func* | Called only when a room is explicitly left (A call to [room.Leave()](#Leave)).
 OnDelete   | func(\*Room) | *dummy func* | Called when the room is removed from ThingsDB.
-OnEmit     | func(\*Room, event *string*, args *[]interface{}*) | *dummy func* | Called only when [*no event handler*](#HandleEvent) is configured for the event.
-Data       | interface{}  | `nil`        | Free to use, for example to assign additional data to the room *(Data stays untouched by the connector)*.
+OnEmit     | func(\*Room, event *string*, args *[]any*) | *dummy func* | Called only when [*no event handler*](#HandleEvent) is configured for the event.
+Data       | any  | `nil`        | Free to use, for example to assign additional data to the room *(Data stays untouched by the connector)*.
 
 *Example configuring the OnInit and OnJoin functions:*
 
@@ -401,7 +401,7 @@ HandleEvent adds an event handler to the room.
 *Example:*
 
 ```go
-func onNewMessage(room *thingsdb.Room, args []interface{}) {
+func onNewMessage(room *thingsdb.Room, args []any) {
 	if len(args) != 1 {
 		fmt.Println("Invalid number of arguments")
 		return
@@ -454,7 +454,7 @@ Emit an even to a room.
 *Example:*
 
 ```go
-args := []interface{}{"Just some chat message"}
+args := []any{"Just some chat message"}
 
 err := room.Emit(
     "new-message",  // Event to emit

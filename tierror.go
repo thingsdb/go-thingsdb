@@ -77,7 +77,7 @@ func NewTiError(msg string, code ErrorCode) *TiError {
 
 // NewTiErrorFromByte returns a pointer to a new Error from msgpack byte data.
 func NewTiErrorFromByte(b []byte) *TiError {
-	var result interface{}
+	var result any
 	err := msgpack.Unmarshal(b, &result)
 	if err != nil {
 		return &TiError{
@@ -86,7 +86,7 @@ func NewTiErrorFromByte(b []byte) *TiError {
 		}
 	}
 
-	errMap, ok := result.(map[string]interface{})
+	errMap, ok := result.(map[string]any)
 	if !ok {
 		return &TiError{
 			msg:  "expected a map",

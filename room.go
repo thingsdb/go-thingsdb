@@ -8,8 +8,8 @@ import (
 // DefaultWait can be used as default time to wait for a Join
 const DefaultWait = 60 * time.Second
 
-func foo(room *Room)                                   {}
-func bar(room *Room, event string, args []interface{}) {}
+func foo(room *Room)                           {}
+func bar(room *Room, event string, args []any) {}
 
 // Room type can be used to join a ThingsDB room
 type Room struct {
@@ -20,7 +20,7 @@ type Room struct {
 	scope         string
 	conn          *Conn
 	waitJoin      chan error
-	eventHandlers map[string](func(room *Room, args []interface{}))
+	eventHandlers map[string](func(room *Room, args []any))
 
 	// Public
 	// Note: OnEmit will *only* be called when no event handler for the given
@@ -29,8 +29,8 @@ type Room struct {
 	OnJoin   func(room *Room)
 	OnLeave  func(room *Room)
 	OnDelete func(room *Room)
-	OnEmit   func(room *Room, event string, args []interface{})
-	Data     interface{}
+	OnEmit   func(room *Room, event string, args []any)
+	Data     any
 }
 
 // NewRoom creates a new room using code. The code should return the room Id for the room.
@@ -63,7 +63,7 @@ func NewRoomFromId(scope string, id uint64) *Room {
 		scope:         scope,
 		conn:          nil,
 		waitJoin:      nil,
-		eventHandlers: make(map[string]func(room *Room, args []interface{})),
+		eventHandlers: make(map[string]func(room *Room, args []any)),
 
 		// Public
 		OnInit:   foo,
@@ -105,7 +105,7 @@ func (room *Room) Scope() string {
 //
 // Example:
 //
-//	func onNewMessage(room *thingsdb.Room, args []interface{}) {
+//	func onNewMessage(room *thingsdb.Room, args []any) {
 //	    if len(args) != 1 {
 //	       fmt.Println("Invalid number of arguments")
 //	       return
@@ -124,7 +124,7 @@ func (room *Room) Scope() string {
 //
 //	// Add event handler for the "new-message" event
 //	room.HandleEvent("new-message", onNewMessage)
-func (room *Room) HandleEvent(event string, handle func(room *Room, args []interface{})) {
+func (room *Room) HandleEvent(event string, handle func(room *Room, args []any)) {
 	room.eventHandlers[event] = handle
 }
 
@@ -199,13 +199,13 @@ func (room *Room) Leave() error {
 //
 // Example:
 //
-//	args := []interface{}{"Just some chat message"}
+//	args := []any{"Just some chat message"}
 //
 //	err := room.Emit(
 //	    "new-message",  // Event to emit
 //	    args            // Arguments (may be nil)
 //	);
-func (room *Room) Emit(event string, args []interface{}) error {
+func (room *Room) Emit(event string, args []any) error {
 	if room.conn == nil {
 		return fmt.Errorf("Room Id %d is not joined", room.id)
 	}
@@ -216,13 +216,13 @@ func (room *Room) Emit(event string, args []interface{}) error {
 //
 // Example:
 //
-//	args := []interface{}{"Just some chat message"}
+//	args := []any{"Just some chat message"}
 //
 //	err := room.EmitPeers(
 //	    "new-message",  // Event to emit to peers
 //	    args            // Arguments (may be nil)
 //	);
-func (room *Room) EmitPeers(event string, args []interface{}) error {
+func (room *Room) EmitPeers(event string, args []any) error {
 	if room.conn == nil {
 		return fmt.Errorf("Room Id %d is not joined", room.id)
 	}
@@ -234,12 +234,12 @@ func (room *Room) join(conn *Conn) error {
 	defer conn.rooms.mux.Unlock()
 
 	if room.id == 0 {
-		var vars map[string]interface{}
+		var vars map[string]any
 		if room.code == nil {
 			return fmt.Errorf("Code or a room Id > 0 is required")
 		}
 		if room.name != nil {
-			vars = map[string]interface{}{
+			vars = map[string]any{
 				"name": *room.name,
 			}
 		}
