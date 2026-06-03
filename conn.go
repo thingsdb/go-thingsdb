@@ -190,18 +190,18 @@ func (conn *Conn) IsConnected() bool {
 //	    fmt.Println(res)  // "Hello Go Connector for ThingsDB!!"
 //	}
 //
-// Arguments can be provided using a `map[string]interface{}`, for example:
+// Arguments can be provided using a `map[string]any`, for example:
 //
-//	vars := map[string]interface{}{
+//	vars := map[string]any{
 //	    "name": "Alice",
 //	}
 //
 //	if res, err := conn.Query("/t", "`Hello {name}!!`;", vars); err == nil {
 //	    fmt.Println(res) // "Hello Alice!!"
 //	}
-func (conn *Conn) Query(scope string, code string, vars map[string]interface{}) (interface{}, error) {
-	var result interface{}
-	data := []interface{}{scope, code}
+func (conn *Conn) Query(scope string, code string, vars map[string]any) (any, error) {
+	var result any
+	data := []any{scope, code}
 	if vars != nil {
 		data = append(data, vars)
 	}
@@ -213,15 +213,15 @@ func (conn *Conn) Query(scope string, code string, vars map[string]interface{}) 
 }
 
 // QueryRaw is like Query except a raw []byte array is returned
-func (conn *Conn) QueryRaw(scope string, code string, vars map[string]interface{}) ([]byte, error) {
-	data := []interface{}{scope, code}
+func (conn *Conn) QueryRaw(scope string, code string, vars map[string]any) ([]byte, error) {
+	data := []any{scope, code}
 	if vars != nil {
 		data = append(data, vars)
 	}
 	return conn.ensureWrite(ProtoReqQuery, data)
 }
 
-// Run a procedure in ThingsDB. Arguments are optional and may be either positional `[]interface{}` or by map `map[string]interface{}`.
+// Run a procedure in ThingsDB. Arguments are optional and may be either positional `[]any` or by map `map[string]any`.
 //
 // Example without arguments:
 //
@@ -237,7 +237,7 @@ func (conn *Conn) QueryRaw(scope string, code string, vars map[string]interface{
 //	// Suppose collection `stuff` has the following procedure:
 //	// new_procedure('subtract', |a, b| a - b);
 //
-//	args := []interface{}{40, 10}
+//	args := []any{40, 10}
 //
 //	if res, err := conn.Run("//stuff", "subtract", args); err == nil {
 //	    fmt.Println(res)  // 30
@@ -248,7 +248,7 @@ func (conn *Conn) QueryRaw(scope string, code string, vars map[string]interface{
 //	// Suppose collection `stuff` has the following procedure:
 //	// new_procedure('subtract', |a, b| a - b);
 //
-//	args := map[string]interface{}{
+//	args := map[string]any{
 //	    "a": 15,
 //	    "b": 5,
 //	}
@@ -257,9 +257,9 @@ func (conn *Conn) QueryRaw(scope string, code string, vars map[string]interface{
 //	}
 //
 // ```
-func (conn *Conn) Run(scope string, procedure string, args interface{}) (interface{}, error) {
-	var result interface{}
-	data := []interface{}{scope, procedure}
+func (conn *Conn) Run(scope string, procedure string, args any) (any, error) {
+	var result any
+	data := []any{scope, procedure}
 	if args != nil {
 		data = append(data, args)
 	}
@@ -271,8 +271,8 @@ func (conn *Conn) Run(scope string, procedure string, args interface{}) (interfa
 }
 
 // RunRaw is like Query except a raw []byte array is returned
-func (conn *Conn) RunRaw(scope string, procedure string, args interface{}) ([]byte, error) {
-	data := []interface{}{scope, procedure}
+func (conn *Conn) RunRaw(scope string, procedure string, args any) ([]byte, error) {
+	data := []any{scope, procedure}
 	if args != nil {
 		data = append(data, args)
 	}
@@ -286,7 +286,7 @@ func (conn *Conn) RunRaw(scope string, procedure string, args interface{}) ([]by
 //
 // Example:
 //
-//	args := []interface{}{"This is a message"}
+//	args := []any{"This is a message"}
 //
 //	err := conn.Emit(
 //	    "//stuff",      // scope of the Room
@@ -294,8 +294,8 @@ func (conn *Conn) RunRaw(scope string, procedure string, args interface{}) ([]by
 //	    "new-message",  // Event to emit
 //	    args            // Arguments (may be nil)
 //	);
-func (conn *Conn) Emit(scope string, roomId uint64, event string, args []interface{}) error {
-	data := []interface{}{scope, roomId, event}
+func (conn *Conn) Emit(scope string, roomId uint64, event string, args []any) error {
+	data := []any{scope, roomId, event}
 	if args != nil {
 		data = append(data, args...)
 	}
@@ -311,7 +311,7 @@ func (conn *Conn) Emit(scope string, roomId uint64, event string, args []interfa
 //
 // Example:
 //
-//	args := []interface{}{"This is a message"}
+//	args := []any{"This is a message"}
 //
 //	err := conn.EmitPeers(
 //	    "//stuff",      // scope of the Room
@@ -319,8 +319,8 @@ func (conn *Conn) Emit(scope string, roomId uint64, event string, args []interfa
 //	    "new-message",  // Event to emit
 //	    args            // Arguments (may be nil)
 //	);
-func (conn *Conn) EmitPeers(scope string, roomId uint64, event string, args []interface{}) error {
-	data := []interface{}{scope, roomId, event}
+func (conn *Conn) EmitPeers(scope string, roomId uint64, event string, args []any) error {
+	data := []any{scope, roomId, event}
 	if args != nil {
 		data = append(data, args...)
 	}
@@ -349,7 +349,7 @@ func (conn *Conn) Close() {
 
 		prev := conn.buf.conn
 		conn.buf.conn = nil
-		prev.Close() // Prevents loop
+		_ = prev.Close() // Prevents loop
 	}
 	conn.mux.Unlock()
 }
@@ -398,8 +398,8 @@ func (conn *Conn) connect() error {
 }
 
 func (conn *Conn) joinOrLeave(proto Proto, scope string, ids []*uint64) error {
-	var result interface{}
-	data := make([]interface{}, 1+len(ids))
+	var result any
+	data := make([]any, 1+len(ids))
 	data[0] = scope
 	for i, v := range ids {
 		data[1+i] = v
@@ -409,7 +409,7 @@ func (conn *Conn) joinOrLeave(proto Proto, scope string, ids []*uint64) error {
 		err = msgpack.Unmarshal(res, &result)
 	}
 	if err == nil {
-		arr, ok := result.([]interface{})
+		arr, ok := result.([]any)
 		if !ok {
 			return fmt.Errorf("unexpected Join response: %v", result)
 		}
@@ -502,7 +502,7 @@ func (conn *Conn) getRespCh(pid uint16, b []byte, timeout time.Duration) ([]byte
 	return result, err
 }
 
-func (conn *Conn) ensureWrite(tp Proto, data interface{}) ([]byte, error) {
+func (conn *Conn) ensureWrite(tp Proto, data any) ([]byte, error) {
 
 	pid := conn.nextPid()
 	b, err := pkgPack(pid, tp, data)
@@ -539,7 +539,7 @@ func (conn *Conn) ensureWrite(tp Proto, data interface{}) ([]byte, error) {
 
 }
 
-func (conn *Conn) write(tp Proto, data interface{}, timeout time.Duration) (interface{}, error) {
+func (conn *Conn) write(tp Proto, data any, timeout time.Duration) (any, error) {
 	if !conn.IsConnected() {
 		return nil, fmt.Errorf("not connected")
 	}
@@ -554,7 +554,7 @@ func (conn *Conn) write(tp Proto, data interface{}, timeout time.Duration) (inte
 	return conn.getRespCh(pid, b, timeout)
 }
 
-func (conn *Conn) closeAndReconnect(s string, a ...interface{}) {
+func (conn *Conn) closeAndReconnect(s string, a ...any) {
 	conn.mux.Lock()
 	if conn.buf.conn != nil {
 		conn.logWarning(s, a...)
@@ -563,7 +563,7 @@ func (conn *Conn) closeAndReconnect(s string, a ...interface{}) {
 		}
 		prev := conn.buf.conn
 		conn.buf.conn = nil
-		prev.Close()
+		_ = prev.Close()
 
 		conn.logInfo("Try to reconnect...")
 		go conn.reconnectLoop()
@@ -603,7 +603,7 @@ func (conn *Conn) listen() {
 			case ProtoOnRoomDelete, ProtoOnRoomEvent, ProtoOnRoomJoin, ProtoOnRoomLeave:
 				ev, err := newRoomEvent(pkg)
 				if err == nil {
-					if room, ok := conn.rooms.getRoom(ev.Id); ok {
+					if room, ok := conn.rooms.getRoom(ev.Scope, ev.Id); ok {
 						room.onEvent(ev)
 					} else {
 						conn.logInfo("Room Id %d is not registered on this connection", ev.Id)
@@ -672,7 +672,7 @@ func (conn *Conn) reconnectLoop() {
 	}
 }
 
-func (conn *Conn) _writeLog(s string, a ...interface{}) {
+func (conn *Conn) _writeLog(s string, a ...any) {
 	msg := fmt.Sprintf(s, a...)
 	if conn.LogCh == nil {
 		log.Println(msg)
@@ -681,19 +681,19 @@ func (conn *Conn) _writeLog(s string, a ...interface{}) {
 	}
 }
 
-func (conn *Conn) logInfo(s string, a ...interface{}) {
+func (conn *Conn) logInfo(s string, a ...any) {
 	if conn.LogLevel <= LogInfo {
 		conn._writeLog("[I] "+s, a...)
 	}
 }
 
-func (conn *Conn) logWarning(s string, a ...interface{}) {
+func (conn *Conn) logWarning(s string, a ...any) {
 	if conn.LogLevel <= LogWarning {
 		conn._writeLog("[W] "+s, a...)
 	}
 }
 
-func (conn *Conn) logError(s string, a ...interface{}) {
+func (conn *Conn) logError(s string, a ...any) {
 	if conn.LogLevel <= LogError {
 		conn._writeLog("[E] "+s, a...)
 	}

@@ -17,7 +17,7 @@ func onJoin(room *thingsdb.Room) {
 	fmt.Printf("In task room Id %d join\n", room.Id())
 }
 
-func onMsg(room *thingsdb.Room, args []interface{}) {
+func onMsg(room *thingsdb.Room, args []any) {
 	if len(args) != 1 {
 		fmt.Println("Invalid argument length")
 		return

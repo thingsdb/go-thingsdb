@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"os"
 	"testing"
+	"time"
 )
 
 // TestNewConn
@@ -17,6 +18,10 @@ func TestNewConn(t *testing.T) {
 
 // TestPlayground
 func TestPlayground(t *testing.T) {
+	token := os.Getenv("TI_TOKEN")
+	if token == "" {
+		return
+	}
 	want := "Welcome at ThingsDB!"
 
 	// Only required for a secure connection
@@ -33,12 +38,10 @@ func TestPlayground(t *testing.T) {
 		// Close the connection at the end of this function
 		defer conn.Close()
 
-		token := os.Getenv("TI_TOKEN")
-
 		if err := conn.AuthToken(token); err != nil {
 			t.Fatalf(`Failed to authenticate: %v`, err)
 		} else {
-			vars := map[string]interface{}{
+			vars := map[string]any{
 				"index": 1,
 			}
 
@@ -50,6 +53,28 @@ func TestPlayground(t *testing.T) {
 
 			if data != want || err != nil {
 				t.Fatalf(`%q != %q, error: %v`, data, want, err)
+			}
+		}
+	}
+}
+
+func TestLocal(t *testing.T) {
+	do_local := os.Getenv("TI_LOCAL")
+	if do_local == "" {
+		return
+	}
+	conn := NewConn("127.0.0.1", 9200, nil)
+	if err := conn.Connect(); err != nil {
+		t.Fatalf(`Failed to connect: %v`, err)
+	} else {
+		// Close the connection at the end of this function
+		defer conn.Close()
+		if err := conn.AuthPassword("admin", "pass"); err != nil {
+			t.Fatalf(`Failed to authenticate: %v`, err)
+		} else {
+			room := NewRoom("//stuff", "'my_room';")
+			if err := room.Join(conn, time.Second*3); err != nil {
+				t.Fatalf(`Failed to join: %v`, err)
 			}
 		}
 	}
