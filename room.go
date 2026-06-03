@@ -252,16 +252,56 @@ func (room *Room) join(conn *Conn) error {
 
 		switch val := val.(type) {
 		case int:
+			roomId = uint64(val)
 		case int8:
+			roomId = uint64(val)
 		case int16:
+			roomId = uint64(val)
 		case int32:
+			roomId = uint64(val)
 		case int64:
+			roomId = uint64(val)
 		case uint8:
+			roomId = uint64(val)
 		case uint16:
+			roomId = uint64(val)
 		case uint32:
 			roomId = uint64(val)
 		case uint64:
 			roomId = val
+		case string:
+			code := "room(name).id();"
+			room.code = &code
+			room.name = &val
+			vars = map[string]any{
+				"name": *room.name,
+			}
+			val2, err := conn.Query(room.scope, *room.code, vars)
+			if err != nil {
+				return err
+			}
+			switch val2 := val2.(type) {
+			case int:
+				roomId = uint64(val2)
+			case int8:
+				roomId = uint64(val2)
+			case int16:
+				roomId = uint64(val2)
+			case int32:
+				roomId = uint64(val2)
+			case int64:
+				roomId = uint64(val2)
+			case uint8:
+				roomId = uint64(val2)
+			case uint16:
+				roomId = uint64(val2)
+			case uint32:
+				roomId = uint64(val2)
+			case uint64:
+				roomId = val2
+			default:
+				return fmt.Errorf("expecting code `%s` to return with a room Id (type integer), bot got: %v", *room.code, val2)
+			}
 		default:
 			return fmt.Errorf("expecting code `%s` to return with a room Id (type integer), bot got: %v", *room.code, val)
 		}
@@ -271,7 +311,6 @@ func (room *Room) join(conn *Conn) error {
 		if err != nil {
 			return err
 		}
-
 		if roomIds[0] == nil {
 			return fmt.Errorf("Room Id %d not found. The Id was returned using ThingsDB code: %s", roomId, *room.code)
 		}
@@ -290,23 +329,14 @@ func (room *Room) join(conn *Conn) error {
 	}
 
 	room.scope = toFullScope(room.scope)
-	conn.rooms.store[room.scope][room.id] = room
-	room.OnInit(room)
+	conn.rooms.registerRoom(room)
 
+	room.OnInit(room)
 	return nil
 }
 
 func (room *Room) onStop(f func(room *Room)) {
-	scope := room.scope
-	roomID := room.id
-	conn := room.conn
-
-	if roomMap, exists := conn.rooms.store[scope]; exists {
-		delete(roomMap, roomID)
-		if len(roomMap) == 0 {
-			delete(conn.rooms.store, scope)
-		}
-	}
+	room.conn.rooms.unRegisterRoom(room)
 	f(room)
 }
 

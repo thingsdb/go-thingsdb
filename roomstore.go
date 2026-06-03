@@ -40,3 +40,27 @@ func (rs *roomStore) getRoomMap() map[string][]*uint64 {
 	rs.mux.Unlock()
 	return roomMap
 }
+
+func (rs *roomStore) registerRoom(room *Room) {
+	// Locked from outside!!
+	scope := room.scope
+	roomID := room.id
+
+	if rs.store[scope] == nil {
+		rs.store[scope] = make(map[uint64]*Room)
+	}
+
+	rs.store[scope][roomID] = room
+}
+
+func (rs *roomStore) unRegisterRoom(room *Room) {
+	scope := room.scope
+	roomID := room.id
+
+	if roomMap, exists := rs.store[scope]; exists {
+		delete(roomMap, roomID)
+		if len(roomMap) == 0 {
+			delete(rs.store, scope)
+		}
+	}
+}
