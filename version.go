@@ -1,10 +1,11 @@
 package thingsdb
 
 // Version exposes the go-thingsdb version
-const Version = "1.1.2"
+const Version = "1.2.0"
 
 //Publish module:
 //
+//  go get -u ./...
 //  go mod tidy
 //  TI_TOKEN="Fai6N..." go test ./...
 //  git tag {VERSION}

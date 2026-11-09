@@ -20,8 +20,10 @@
     * [IsConnected() -> bool](#IsConnected)
     * [Query(scope, code, vars) -> any, error](#Query)
     * [QueryRaw(scope, code, vars) -> []byte, error](#QueryRaw)
+	* [QueryInto(scope, code, vars, dest) -> error](#QueryInto)
     * [Run(scope, procedure, args) -> any, error](#Run)
     * [RunRaw(scope, procedure, args) -> []byte, error](#RunRaw)
+	* [RunInto(scope, procedure, args, dest) -> error](#RunInto)
     * [Emit(scope, roomId, event, args) -> error](#Emit-Conn)
     * [EmitPeers(scope, roomId, event, args) -> error](#EmitPeers-Conn)
     * [Close()](#Close)
@@ -43,7 +45,7 @@
 
 Simple install the package to your [$GOPATH](https://github.com/golang/go/wiki/GOPATH) with the [go tool](https://golang.org/cmd/go/) from shell:
 
-> At least Go version 1.12 is required.
+> At least Go version 1.23 is required.
 
 ```shell
 $ go get github.com/thingsdb/go-thingsdb
@@ -238,6 +240,24 @@ if res, err := conn.Query("/t", "`Hello {name}!!`;", vars); err == nil {
 
 The same as Query, except a raw `[]byte` array is returned.
 
+### QueryInto
+
+Query ThingsDB using code and automatically unpack the result into a typed destination variable. The target must be passed as a pointer.
+
+*Example:*
+
+```go
+type User struct {
+    Name string `msgpack:"name"`
+    Age  int    `msgpack:"age"`
+}
+
+var user User
+if err := conn.QueryInto("/t", "{name: 'Alice', age: 30};", nil, &user); err == nil {
+    fmt.Printf("%+v\n", user) // {Name:Alice Age:30}
+}
+```
+
 ### Run
 
 Run a procedure in ThingsDB. Arguments are optional and may be either positional `[]any` or by map `map[string]any`.
@@ -286,7 +306,12 @@ if res, err := conn.Run("//stuff", "subtract", vars); err == nil {
 
 ### RunRaw
 
-The same as Run, except a raw `[]byte` array is returned.
+The same as Run but automatically unpack the result into a typed destination variable.
+The target must be passed as a pointer. See [QueryInto](#queryinto) as an example of how the destionation variable must be used.
+
+### RunInto
+
+The same as Run, except a extra argument is accepted to
 
 ### Emit-Conn
 

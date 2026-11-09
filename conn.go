@@ -201,14 +201,7 @@ func (conn *Conn) IsConnected() bool {
 //	}
 func (conn *Conn) Query(scope string, code string, vars map[string]any) (any, error) {
 	var result any
-	data := []any{scope, code}
-	if vars != nil {
-		data = append(data, vars)
-	}
-	res, err := conn.ensureWrite(ProtoReqQuery, data)
-	if err == nil {
-		err = msgpack.Unmarshal(res, &result)
-	}
+	err := conn.QueryInto(scope, code, vars, &result)
 	return result, err
 }
 
@@ -219,6 +212,15 @@ func (conn *Conn) QueryRaw(scope string, code string, vars map[string]any) ([]by
 		data = append(data, vars)
 	}
 	return conn.ensureWrite(ProtoReqQuery, data)
+}
+
+// QueryInto is like Query except a raw []byte array is returned
+func (conn *Conn) QueryInto(scope string, code string, vars map[string]any, dest any) error {
+	res, err := conn.QueryRaw(scope, code, vars)
+	if err == nil {
+		err = msgpack.Unmarshal(res, &dest)
+	}
+	return err
 }
 
 // Run a procedure in ThingsDB. Arguments are optional and may be either positional `[]any` or by map `map[string]any`.
@@ -259,24 +261,26 @@ func (conn *Conn) QueryRaw(scope string, code string, vars map[string]any) ([]by
 // ```
 func (conn *Conn) Run(scope string, procedure string, args any) (any, error) {
 	var result any
-	data := []any{scope, procedure}
-	if args != nil {
-		data = append(data, args)
-	}
-	res, err := conn.ensureWrite(ProtoReqRun, data)
-	if err == nil {
-		err = msgpack.Unmarshal(res, &result)
-	}
+	err := conn.RunInto(scope, procedure, args, &result)
 	return result, err
 }
 
-// RunRaw is like Query except a raw []byte array is returned
+// RunRaw is like Run except a raw []byte array is returned
 func (conn *Conn) RunRaw(scope string, procedure string, args any) ([]byte, error) {
 	data := []any{scope, procedure}
 	if args != nil {
 		data = append(data, args)
 	}
 	return conn.ensureWrite(ProtoReqRun, data)
+}
+
+// RunInto is like Run except the result is unpacked into `dest`
+func (conn *Conn) RunInto(scope string, procedure string, args any, dest any) error {
+	res, err := conn.RunRaw(scope, procedure, args)
+	if err == nil {
+		err = msgpack.Unmarshal(res, &dest)
+	}
+	return err
 }
 
 // Emit an even to a room.
