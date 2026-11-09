@@ -218,7 +218,7 @@ func (conn *Conn) QueryRaw(scope string, code string, vars map[string]any) ([]by
 func (conn *Conn) QueryInto(scope string, code string, vars map[string]any, dest any) error {
 	res, err := conn.QueryRaw(scope, code, vars)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &dest)
+		err = msgpack.Unmarshal(res, dest)
 	}
 	return err
 }
