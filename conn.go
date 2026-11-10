@@ -449,7 +449,7 @@ func getResult(respCh chan *pkg, timeoutCh chan bool) ([]byte, error) {
 				result = pkg.data
 				pkg.data = nil
 			case ProtoResPong, ProtoResOk:
-				result = nil
+				result = NilBytes
 			case ProtoResError:
 				err = NewTiErrorFromByte(pkg.data)
 			default:

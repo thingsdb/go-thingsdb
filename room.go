@@ -328,7 +328,7 @@ func (room *Room) join(conn *Conn) error {
 		}
 	}
 
-	room.scope = toFullScope(room.scope)
+	room.scope = ToFullScope(room.scope)
 	conn.rooms.registerRoom(room)
 
 	room.OnInit(room)

@@ -20,7 +20,8 @@ func isName(s string) bool {
 	return validNameRegex.MatchString(s)
 }
 
-func cnScope(scope string) (string, error) {
+// CnScope returns the collection name for a collection scope.
+func CnScope(scope string) (string, error) {
 	var name string
 
 	if strings.Contains(scope, ":") {
@@ -40,13 +41,16 @@ func cnScope(scope string) (string, error) {
 	return "", fmt.Errorf("invalid (collection) scope name: %s", scope)
 }
 
-func toFullScope(scope string) string {
+// ToFullScope converts a collection scope to its full scope name.
+func ToFullScope(scope string) string {
 	if strings.HasPrefix(scope, "@collection:") {
 		return scope
 	}
-	if cn, err := cnScope(scope); err == nil {
+	if cn, err := CnScope(scope); err == nil {
 		return "@collection:" + cn
 	}
-	return scope // should not happed if a valied scope
+	return scope // should not happed if a valid scope
 }
 
+// NilBytes represent a MessagePack byte array representing a simple `nil`.
+var NilBytes = []byte{0xc0}
