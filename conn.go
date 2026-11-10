@@ -278,7 +278,7 @@ func (conn *Conn) RunRaw(scope string, procedure string, args any) ([]byte, erro
 func (conn *Conn) RunInto(scope string, procedure string, args any, dest any) error {
 	res, err := conn.RunRaw(scope, procedure, args)
 	if err == nil {
-		err = msgpack.Unmarshal(res, &dest)
+		err = msgpack.Unmarshal(res, dest)
 	}
 	return err
 }
