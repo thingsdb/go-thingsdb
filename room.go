@@ -229,6 +229,13 @@ func (room *Room) EmitPeers(event string, args []any) error {
 	return room.conn.EmitPeers(room.scope, room.id, event, args)
 }
 
+// Conn returns the ThingsDB Connection used by the room
+//
+// Note: must be checked for not nil
+func (room *Room) Conn() *Conn {
+	return room.conn
+}
+
 func (room *Room) join(conn *Conn) error {
 	conn.rooms.mux.Lock()
 	defer conn.rooms.mux.Unlock()

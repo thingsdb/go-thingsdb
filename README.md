@@ -31,13 +31,14 @@
     * [NewRoom(scope, code) -> *Room](#NewRoom)
     * [NewRoomFromId(scope, roomId) -> *Room](#NewRoomFromId)
 	* [NewRoomFromName(scope, name) -> *Room](#NewRoomFromName)
-    * [Id() -> uint64](#Id)
-    * [Scope() -> string](#Scope)
-    * [HandleEvent(event, handle)](#HandleEvent)
-    * [Join(conn, wait) -> error](#Join)
-    * [Leave() -> error](#Leave)
-    * [Emit(event, args) -> error](#Emit)
-    * [EmitPeers(event, args) -> error](#EmitPeers)
+    * [Id() -> uint64](#Room-Id)
+    * [Scope() -> string](#Room-Scope)
+	* [Conn() -> *Conn](#Room-Conn)
+    * [HandleEvent(event, handle)](#Room-HandleEvent)
+    * [Join(conn, wait) -> error](#Room-Join)
+    * [Leave() -> error](#Room-Leave)
+    * [Emit(event, args) -> error](#Room-Emit)
+    * [EmitPeers(event, args) -> error](#Room-EmitPeers)
 
 ---------------------------------------
 
@@ -409,19 +410,26 @@ Not every room has a name. The function [set_name](https://docs.thingsdb.io/v1/d
 room := thingsdb.NewRoomFromName("//stuff", "my_room")
 ```
 
-### Id
+### Room.Id
 
 Id returns the Id of the room.
 
 > Note: Id() returns `0` when the room was created using [NewRoom(..)](#NewRoom) and the room has never been joined.
 
-### Scope
+### Room.Scope
 
 Scope returns the Room Scope
 
-### HandleEvent
+### Room.Conn
+
+Connection assiciated with the room. Must be checked for `nil` before usage.
+
+### Room.HandleEvent
 
 HandleEvent adds an event handler to the room.
+
+
+> **Note:** Event handlers are executed directly from the connection's background listener loop. If you need to make queries, run procedures, or make other calls back to the connection from inside your handler, make sure to wrap them in a goroutine to prevent blocking the listener loop.
 
 *Example:*
 
@@ -438,6 +446,13 @@ func onNewMessage(room *thingsdb.Room, args []any) {
 		return
 	}
 
+	go func() {
+		// Wrap connection usage in a goroutine.
+        if conn := room.Conn(); conn != nil {
+            // Use connection..
+        }
+    }()
+
 	fmt.Println(msg)  // Just print the message
 }
 
@@ -449,7 +464,7 @@ room.HandleEvent("new-message", onNewMessage)
 // Note: The (optional) `OnEmit` handler will no longer be called for `new-message` events.
 ```
 
-### Join
+### Room.Join
 
 Join must be called to actually join the room.
 
@@ -462,7 +477,7 @@ If `wait` is set to any other positive value, then both the `OnInit` and `OnJoin
 err := room.Join(conn, thingsdb.DefaultWait)
 ```
 
-### Leave
+### Room.Leave
 
 Leave will stop listening for events on a room.
 
@@ -472,7 +487,7 @@ Leave will stop listening for events on a room.
 err := room.Leave()
 ```
 
-### Emit
+### Room.Emit
 
 Emit an even to a room.
 
@@ -487,7 +502,7 @@ err := room.Emit(
 );
 ```
 
-### EmitPeers
+### Room.EmitPeers
 
 Like [Emit](#Emit), but without echo back. It emits the event to peers only.
 
