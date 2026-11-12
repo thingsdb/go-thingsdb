@@ -31,14 +31,14 @@
     * [NewRoom(scope, code) -> *Room](#NewRoom)
     * [NewRoomFromId(scope, roomId) -> *Room](#NewRoomFromId)
 	* [NewRoomFromName(scope, name) -> *Room](#NewRoomFromName)
-    * [Id() -> uint64](#Room-Id)
-    * [Scope() -> string](#Room-Scope)
-	* [Conn() -> *Conn](#Room-Conn)
-    * [HandleEvent(event, handle)](#Room-HandleEvent)
-    * [Join(conn, wait) -> error](#Room-Join)
-    * [Leave() -> error](#Room-Leave)
-    * [Emit(event, args) -> error](#Room-Emit)
-    * [EmitPeers(event, args) -> error](#Room-EmitPeers)
+    * [Id() -> uint64](#Id)
+    * [Scope() -> string](#Scope)
+	* [Conn() -> *Conn](#room-conn)
+    * [HandleEvent(event, handle)](#HandleEvent)
+    * [Join(conn, wait) -> error](#Join)
+    * [Leave() -> error](#Leave)
+    * [Emit(event, args) -> error](#Emit)
+    * [EmitPeers(event, args) -> error](#EmitPeers)
 
 ---------------------------------------
 
@@ -410,21 +410,22 @@ Not every room has a name. The function [set_name](https://docs.thingsdb.io/v1/d
 room := thingsdb.NewRoomFromName("//stuff", "my_room")
 ```
 
-### Room.Id
+### Id
 
 Id returns the Id of the room.
 
 > Note: Id() returns `0` when the room was created using [NewRoom(..)](#NewRoom) and the room has never been joined.
 
-### Room.Scope
+### Scope
 
 Scope returns the Room Scope
 
-### Room.Conn
+<a id="room-conn"></a>
+### Conn
 
-Connection assiciated with the room. Must be checked for `nil` before usage.
+Connection associated with the room. Must be checked for `nil` before usage.
 
-### Room.HandleEvent
+### HandleEvent
 
 HandleEvent adds an event handler to the room.
 
@@ -464,7 +465,7 @@ room.HandleEvent("new-message", onNewMessage)
 // Note: The (optional) `OnEmit` handler will no longer be called for `new-message` events.
 ```
 
-### Room.Join
+### Join
 
 Join must be called to actually join the room.
 
@@ -477,7 +478,7 @@ If `wait` is set to any other positive value, then both the `OnInit` and `OnJoin
 err := room.Join(conn, thingsdb.DefaultWait)
 ```
 
-### Room.Leave
+### Leave
 
 Leave will stop listening for events on a room.
 
@@ -487,7 +488,7 @@ Leave will stop listening for events on a room.
 err := room.Leave()
 ```
 
-### Room.Emit
+### Emit
 
 Emit an even to a room.
 
@@ -502,7 +503,7 @@ err := room.Emit(
 );
 ```
 
-### Room.EmitPeers
+### EmitPeers
 
 Like [Emit](#Emit), but without echo back. It emits the event to peers only.
 
