@@ -449,10 +449,10 @@ func onNewMessage(room *thingsdb.Room, args []any) {
 
 	go func() {
 		// Wrap connection usage in a goroutine.
-        if conn := room.Conn(); conn != nil {
-            // Use connection..
-        }
-    }()
+		if conn := room.Conn(); conn != nil {
+			// Use connection..
+		}
+	}()
 
 	fmt.Println(msg)  // Just print the message
 }
